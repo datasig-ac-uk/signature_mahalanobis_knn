@@ -8,7 +8,7 @@ import numpy as np
 from sklearn.model_selection import train_test_split
 import sklearn
 
-DATA_DIR = '/Users/zoos/PycharmProjects/Anomaly_detection/data/'
+DATA_DIR = './data'
 
 
 def get_corpus_and_outlier_paths(df, desired_class):
