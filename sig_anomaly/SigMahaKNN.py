@@ -6,7 +6,7 @@ import pandas as pd
 from sklearn.metrics import roc_auc_score
 import numpy as np
 
-from Distance import Mahalanobis
+from sig_anomaly.Distance import Mahalanobis
 
 __all__ = "SignatureMahalanobisKNN"
 

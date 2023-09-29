@@ -1,8 +1,8 @@
 Metadata-Version: 2.1
 Name: signature-mahalanobis-knn
-Version: 0.1
-Summary: Description of your package
-Home-page: https://github.com/your_username/your_package_name
+Version: 0.1.1
+Summary: Package to detect anomalous streams, or using it to compute the variance norm
+Home-page: https://github.com/sz85512678/signature_mahalanobis_knn
 Author: Zhen Shao
 License: MIT
 License-File: LICENCE

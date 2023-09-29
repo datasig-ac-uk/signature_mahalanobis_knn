@@ -1,4 +1,5 @@
 LICENCE
+MANIFEST.in
 README.md
 setup.py
 sig_anomaly/Distance.py
@@ -9,3 +10,5 @@ signature_mahalanobis_knn.egg-info/SOURCES.txt
 signature_mahalanobis_knn.egg-info/dependency_links.txt
 signature_mahalanobis_knn.egg-info/requires.txt
 signature_mahalanobis_knn.egg-info/top_level.txt
+test/data/pen_digit_test.pkl
+test/data/pen_digit_train.pkl
