@@ -1,5 +1,6 @@
 import numpy as np
 from numpy import ndarray
+from numba import jit
 
 __all__ = "Mahalanobis"
 
@@ -34,6 +35,26 @@ class Mahalanobis():
         self.Vt = Vt[:k]
         self.S = S[:k]
 
+    @staticmethod
+    @jit(nopython=True) # Observe 6 times speed up on pen-digit dataset
+    def calc_distance(
+            x1: ndarray,
+            x2: ndarray,
+            Vt: ndarray,
+            S: ndarray,
+            subspace_thres: float,
+    ):
+        x = x1 - x2
+        # quantifies the amount that x is outside the row-subspace
+        if np.linalg.norm(x) < 1e-15:
+            return 0
+        rho = np.linalg.norm(x - x @ Vt.T @ Vt) / np.linalg.norm(x)
+
+        if rho > subspace_thres:
+            return np.inf
+        else:
+            return x @ Vt.T @ np.diag(S ** (-2)) @ Vt @ x.T
+
     def distance(self, x1: ndarray, x2: ndarray) -> float:
         """
         Compute the variance norm between x1 and x2
@@ -41,13 +62,10 @@ class Mahalanobis():
         :param x2: 1D array, row vector
         :return: a value representing distance between x, y
         """
-        x = x1 - x2
-        # quantifies the amount that x is outside the row-subspace
-        if np.linalg.norm(x) < 1e-15:
-            return 0
-        rho = np.linalg.norm(x - x @ self.Vt.T @ self.Vt) / np.linalg.norm(x)
-
-        if rho > self.subspace_thres:
-            return np.inf
-        else:
-            return x @ self.Vt.T @ np.diag(self.S ** (-2)) @ self.Vt @ x.T
+        return self.calc_distance(
+            x1,
+            x2,
+            self.Vt,
+            self.S,
+            self.subspace_thres
+        )

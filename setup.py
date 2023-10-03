@@ -2,11 +2,12 @@ from setuptools import setup, find_packages
 
 setup(
     name='signature_mahalanobis_knn',  # Replace with your desired package name
-    version='0.1.1',
+    version='0.1.2',
     packages=find_packages(),
     install_requires=[
         'numpy',
         'scikit-learn',
+        'numba'
         # Add other dependencies here
     ],
     package_data={
