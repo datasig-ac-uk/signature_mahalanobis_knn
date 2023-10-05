@@ -47,7 +47,7 @@ class Mahalanobis():
         x = x1 - x2
         # quantifies the amount that x is outside the row-subspace
         if np.linalg.norm(x) < 1e-15:
-            return 0
+            return 0.0
         rho = np.linalg.norm(x - x @ Vt.T @ Vt) / np.linalg.norm(x)
 
         if rho > subspace_thres:
@@ -62,6 +62,7 @@ class Mahalanobis():
         :param x2: 1D array, row vector
         :return: a value representing distance between x, y
         """
+
         return self.calc_distance(
             x1,
             x2,
@@ -69,3 +70,4 @@ class Mahalanobis():
             self.S,
             self.subspace_thres
         )
+
