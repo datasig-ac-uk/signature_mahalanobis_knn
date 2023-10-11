@@ -23,17 +23,6 @@ def lint(session: nox.Session) -> None:
 
 
 @nox.session
-def pylint(session: nox.Session) -> None:
-    """
-    Run PyLint.
-    """
-    # This needs to be installed into the package environment, and is slower
-    # than a pre-commit check
-    session.install(".", "pylint")
-    session.run("pylint", "signature_mahalanobis_knn", *session.posargs)
-
-
-@nox.session
 def tests(session: nox.Session) -> None:
     """
     Run the unit and regular tests.

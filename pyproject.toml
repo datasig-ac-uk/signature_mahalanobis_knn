@@ -1,5 +1,5 @@
 [build-system]
-requires = ["hatchling", "hatch-vcs"]
+requires = ["hatchling"]
 build-backend = "hatchling.build"
 
 
@@ -11,7 +11,7 @@ authors = [
 ]
 description = "Using Nearest Neighbour-Variance Norm with Path Signatures for anomaly detection of streams"
 readme = "README.md"
-requires-python = ">=3.8, <=3.12"
+requires-python = ">=3.8, <3.13"
 classifiers = [
   "Intended Audience :: Science/Research",
   "Intended Audience :: Developers",
@@ -61,8 +61,7 @@ Changelog = "https://github.com/datasig-ac-uk/signature_mahalanobis_knn/releases
 
 
 [tool.hatch]
-version.source = "vcs"
-build.hooks.vcs.version-file = "src/signature_mahalanobis_knn/_version.py"
+version.path = "src/signature_mahalanobis_knn/__init__.py"
 envs.default.dependencies = [
   "pytest",
   "pytest-cov",
