@@ -69,6 +69,19 @@ class SignatureMahalanobisKNN:
                 SignatureTransformer,
             )
 
+            # set default kwargs for signature transformer if not provided
+            if kwargs == {}:
+                kwargs = {
+                    "augmentation_list": ("addtime",),
+                    "window_name": "global",
+                    "window_depth": None,
+                    "window_length": None,
+                    "window_step": None,
+                    "rescaling": None,
+                    "sig_tfm": "signature",
+                    "depth": 2,
+                }
+
             self.signature_transform = SignatureTransformer(
                 **kwargs,
             )
