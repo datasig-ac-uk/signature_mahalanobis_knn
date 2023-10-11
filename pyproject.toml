@@ -32,6 +32,7 @@ dependencies = [
   "sktime@git+https://github.com/sz85512678/sktime",
   "numpy",
   "scikit-learn",
+  "matplotlib",
   "numba",
 ]
 

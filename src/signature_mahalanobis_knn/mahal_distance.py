@@ -5,12 +5,11 @@ from numba import jit
 
 
 class Mahalanobis:
-    """
-    After fit is called, becomes callable and intended to be used
-    as a distance function in sklearn nearest neighbour.
-    """
-
     def __init__(self):
+        """
+        After fit is called, becomes callable and intended to be used
+        as a distance function in sklearn nearest neighbour.
+        """
         self.Vt: np.ndarray = np.empty(
             0
         )  # Truncated right singular matrix transposed of the corpus
@@ -28,10 +27,10 @@ class Mahalanobis:
         """
         Fit the object to a corpus X.
 
-        :param X: numpy array, panel data representing the corpus, each row is a data point
-        :param y: No use, here for interface consistency
-
-        :return: None
+        Parameters
+        ----------
+        X : np.ndarray
+            Panel data representing the corpus, each row is a data point.
         """
         # mean centering
         self.mu = np.mean(X, axis=0)
@@ -55,13 +54,23 @@ class Mahalanobis:
         """
         Compute the variance norm between x1 and x2 using the precomputed SVD.
 
-        :param x1: 1D array, row vector
-        :param x2: 1D array, row vector
-        :param Vt: 2D array, truncated right singular matrix transposed of the corpus
-        :param S: 1D array, truncated singular values of the corpus
-        :subspace_thres: float, threshold to decide whether a point is in the data subspace
+        Parameters
+        ----------
+        x1 : np.ndarray
+            One-dimensional array.
+        x2 : np.ndarray
+            One-dimensional array.
+        Vt : np.ndarray
+            Two-dimensional arrat, truncated right singular matrix transposed of the corpus.
+        S : np.ndarray
+            One-dimensional array, truncated singular values of the corpus.
+        subspace_thres : float
+            Threshold to decide whether a point is in the data subspace.
 
-        :return: a value representing distance between x, y
+        Returns
+        -------
+        float
+            Value representing distance between x, y.
         """
         x = x1 - x2
         # quantifies the amount that x is outside the row-subspace
@@ -76,12 +85,19 @@ class Mahalanobis:
 
     def distance(self, x1: np.ndarray, x2: np.ndarray) -> float:
         """
-        Compute the variance norm between x1 and x2.
+        Compute the variance norm between x1 and x2 using the precomputed SVD.
 
-        :param x1: 1D array, row vector
-        :param x2: 1D array, row vector
+        Parameters
+        ----------
+        x1 : np.ndarray
+            One-dimensional array.
+        x2 : np.ndarray
+            One-dimensional array.
 
-        :return: a value representing distance between x, y
+        Returns
+        -------
+        float
+            Value representing distance between x, y.
         """
 
         return self.calc_distance(x1, x2, self.Vt, self.S, self.subspace_thres)
