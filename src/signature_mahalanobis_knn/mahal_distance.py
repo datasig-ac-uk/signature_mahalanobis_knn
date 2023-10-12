@@ -106,5 +106,10 @@ class Mahalanobis:
             raise ValueError(msg)
 
         return self.calc_distance(
-            x1, x2, self.Vt, self.S, self.subspace_thres, self.zero_thres
+            x1=x1,
+            x2=x2,
+            Vt=self.Vt,
+            S=self.S,
+            subspace_thres=self.subspace_thres,
+            zero_thres=self.zero_thres,
         )
