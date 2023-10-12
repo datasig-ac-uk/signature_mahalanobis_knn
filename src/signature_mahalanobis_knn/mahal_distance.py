@@ -5,7 +5,12 @@ from numba import jit
 
 
 class Mahalanobis:
-    def __init__(self, subspace_thres: float = 1e-3, svd_thres: float = 1e-12):
+    def __init__(
+        self,
+        subspace_thres: float = 1e-3,
+        svd_thres: float = 1e-12,
+        zero_thres: float = 1e-15,
+    ):
         """
         After fit is called, becomes callable and intended to be used
         as a distance function in sklearn nearest neighbour.
@@ -19,16 +24,18 @@ class Mahalanobis:
             Threshold to decide numerical rank of the data matrix,
             by default 1e-12.
         """
-        self.subspace_thres: subspace_thres
-        self.svd_thres: svd_thres
+        self.subspace_thres: float = subspace_thres
+        self.svd_thres: float = svd_thres
+        self.zero_thres: float = zero_thres
 
+        # set the following after fit() is called - None means not fitted yet
         # truncated right singular matrix transposed of the corpus
         self.Vt: np.ndarray | None = None
         # nean of the corpus
         self.mu: np.ndarray | None = None
         # truncated singular values of the corpus
         self.S: np.ndarray | None = None
-        # numerical rank of the corpus, -1 means not fitted
+        # numerical rank of the corpus
         self.numerical_rank: int | None = None
 
     def fit(self, X: np.ndarray, **kwargs) -> None:
@@ -58,6 +65,7 @@ class Mahalanobis:
         Vt: np.ndarray,
         S: np.ndarray,
         subspace_thres: float,
+        zero_thres: float,
     ) -> float:
         """
         Compute the variance norm between x1 and x2 using the precomputed SVD.
@@ -72,7 +80,7 @@ class Mahalanobis:
         """
         x = x1 - x2
         # quantifies the amount that x is outside the row-subspace
-        if np.linalg.norm(x) < 1e-15:
+        if np.linalg.norm(x) < zero_thres:
             return 0.0
         rho = np.linalg.norm(x - x @ Vt.T @ Vt) / np.linalg.norm(x)
 
@@ -94,4 +102,6 @@ class Mahalanobis:
             msg = "Mahalanobis distance is not fitted yet."
             raise ValueError(msg)
 
-        return self.calc_distance(x1, x2, self.Vt, self.S, self.subspace_thres)
+        return self.calc_distance(
+            x1, x2, self.Vt, self.S, self.subspace_thres, self.zero_thres
+        )
