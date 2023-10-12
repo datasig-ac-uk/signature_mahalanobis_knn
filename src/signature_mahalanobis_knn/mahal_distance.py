@@ -23,6 +23,9 @@ class Mahalanobis:
         svd_thres : float, optional
             Threshold to decide numerical rank of the data matrix,
             by default 1e-12.
+        zero_thres : float, optional
+            Threshold to decide whether the distance is zero,
+            by default 1e-15.
         """
         self.subspace_thres: float = subspace_thres
         self.svd_thres: float = svd_thres
