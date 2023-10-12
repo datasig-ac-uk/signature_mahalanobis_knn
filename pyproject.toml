@@ -29,7 +29,8 @@ classifiers = [
 ]
 dynamic = ["version"]
 dependencies = [
-  "sktime@git+https://github.com/sz85512678/sktime",
+  # "sktime@git+https://github.com/sz85512678/sktime",
+  "sktime",
   "numpy",
   "scikit-learn",
   "matplotlib",
