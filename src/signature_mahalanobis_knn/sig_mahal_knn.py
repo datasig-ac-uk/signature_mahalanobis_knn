@@ -24,6 +24,7 @@ class SignatureMahalanobisKNN:
         """
         self.signature_transform = None
         self.n_jobs = n_jobs
+        self.mahal_distance = None
         self.signatures = None
         self.knn = None
 
@@ -96,12 +97,12 @@ class SignatureMahalanobisKNN:
             self.signatures = signatures
 
         # fit mahalanobis distance for the signatures
-        mahal_distance = Mahalanobis()
-        mahal_distance.fit(self.signatures)
+        self.mahal_distance = Mahalanobis()
+        self.mahal_distance.fit(self.signatures)
 
         # fit knn for the mahalanobis distance
         knn = NearestNeighbors(
-            metric=mahal_distance.distance,
+            metric=self.mahal_distance.distance,
             n_jobs=self.n_jobs,
             algorithm=knn_algorithm,
         )
@@ -257,6 +258,11 @@ class SignatureMahalanobisKNN:
         else:
             distances_in = self.conformance(X=test_in)
             distances_out = self.conformance(X=test_out)
+
+        # convert to the default data type of the arrays in
+        # the mahalanobis distance object
+        distances_in = distances_in.astype(self.mahal_distance.default_dtype)
+        distances_out = distances_out.astype(self.mahal_distance.default_dtype)
 
         # compute AUC for the inliers and outliers
         return self.compute_auc_given_dists(

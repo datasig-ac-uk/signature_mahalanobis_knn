@@ -22,8 +22,9 @@ class Mahalanobis:
             1e-12  # Threshold to decide numerical rank of the data matrix
         )
         self.numerical_rank: int = -1  # Numerical rank
+        self.default_dtype = np.float64
 
-    def fit(self, X: np.ndarray, **kwargs) -> None:
+    def fit(self, X: np.ndarray, y: None = None, **kwargs) -> None:  # noqa: ARG002
         """
         Fit the object to a corpus X.
 
@@ -31,6 +32,8 @@ class Mahalanobis:
         ----------
         X : np.ndarray
             Panel data representing the corpus, each row is a data point.
+        y: None
+            Not used, present for API consistency by convention.
         """
         # mean centering
         self.mu = np.mean(X, axis=0)
@@ -39,8 +42,8 @@ class Mahalanobis:
         U, S, Vt = np.linalg.svd(X)
         k = np.sum(self.svd_thres <= S)  # detected numerical rank
         self.numerical_rank = k
-        self.Vt = Vt[:k]
-        self.S = S[:k]
+        self.Vt = Vt[:k].astype(self.default_dtype)
+        self.S = S[:k].astype(self.default_dtype)
 
     @staticmethod
     @jit(nopython=True)  # Observe 6 times speed up on pen-digit dataset
@@ -73,11 +76,12 @@ class Mahalanobis:
             Value representing distance between x, y.
         """
         x = x1 - x2
-        # quantifies the amount that x is outside the row-subspace
-        if np.linalg.norm(x) < 1e-15:
+        norm_x = np.linalg.norm(x)
+        if norm_x < 1e-15:
             return 0.0
-        rho = np.linalg.norm(x - x @ Vt.T @ Vt) / np.linalg.norm(x)
 
+        # quantifies the amount that x is outside the row-subspace
+        rho = np.linalg.norm(x - x @ Vt.T @ Vt) / norm_x
         if rho > subspace_thres:
             return np.inf
 
@@ -99,5 +103,8 @@ class Mahalanobis:
         float
             Value representing distance between x, y.
         """
+        # ensure inputs are the right data type
+        x1 = x1.astype(self.default_dtype)
+        x2 = x2.astype(self.default_dtype)
 
         return self.calc_distance(x1, x2, self.Vt, self.S, self.subspace_thres)
