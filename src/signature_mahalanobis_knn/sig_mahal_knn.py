@@ -9,6 +9,7 @@ from sklearn.neighbors import NearestNeighbors
 from signature_mahalanobis_knn.mahal_distance import Mahalanobis
 
 X_OR_SIGNATURE_ERROR_MSG = "Either X or signatures must be provided"
+MODEL_NOT_FITTED_ERROR_MSG = "Must fit the model first"
 
 
 class SignatureMahalanobisKNN:
@@ -196,15 +197,13 @@ class SignatureMahalanobisKNN:
             Conformance scores for data points provided.
         """
         if self.knn is None:
-            msg = "Must fit the model first"
-            raise ValueError(msg)
+            raise ValueError(MODEL_NOT_FITTED_ERROR_MSG)
 
         if signatures is None:
             if X is None:
                 raise ValueError(X_OR_SIGNATURE_ERROR_MSG)
             if self.signature_transform is None:
-                msg = "Must fit the model first"
-                raise ValueError(msg)
+                raise ValueError(MODEL_NOT_FITTED_ERROR_MSG)
 
             # compute signatures
             sigs = Parallel(n_jobs=self.n_jobs)(
