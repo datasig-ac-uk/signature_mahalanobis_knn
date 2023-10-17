@@ -3,128 +3,190 @@ from __future__ import annotations
 import numpy as np
 import pandas as pd
 from joblib import Parallel, delayed
-from sklearn.metrics import roc_auc_score
 from sklearn.neighbors import NearestNeighbors
-from sktime.transformations.panel.signature_based import SignatureTransformer
 
 from signature_mahalanobis_knn.mahal_distance import Mahalanobis
+
+X_OR_SIGNATURE_ERROR_MSG = "Either X or signatures must be provided"
+MODEL_NOT_FITTED_ERROR_MSG = "Must fit the model first"
 
 
 class SignatureMahalanobisKNN:
     def __init__(
         self,
-        n_jobs=-2,
-        augmentation_list=("addtime",),
-        window_name="global",
-        window_depth=None,
-        window_length=None,
-        window_step=None,
-        rescaling=None,
-        sig_tfm="signature",
-        depth=2,
+        n_jobs: int = -2,
     ):
         """
-        __description__
-
-        :param n_jobs: parameter for joblib, number of parallel processors to use.
-        :param augmentation_list: Possible augmentation strings are
-        ['leadlag', 'ir', 'addtime', 'cumsum', 'basepoint']
-        :param window_name: str, String from ['global', 'sliding', 'expanding', 'dyadic']
-        :param window_depth: int, The depth of the dyadic window. (Active only if
-        `window_name == 'dyadic']`.
-        :param window_length: int, The length of the sliding/expanding window. (Active
-        only if `window_name in ['sliding, 'expanding'].
-        :param window_step: int, The step of the sliding/expanding window. (Active
-        only if `window_name in ['sliding, 'expanding'].
-        :param rescaling: "pre" or "post",
-                    "pre": rescale the path last signature term should be roughly O(1)
-                    "post": Rescals the output signature by multiplying the depth-d term by d!.
-                            Aim is that every term become ~O(1).
-        :param sig_tfm: One of: ['signature', 'logsignature']).
-        :param depth: int, Signature truncation depth.
+        Parameters
+        ----------
+        n_jobs : int, optional
+            Parameter for joblib, number of parallel processors to use, by default -2.
+            -1 means using all processors, -2 means using all processors but one.
         """
-        self.signature_transform = SignatureTransformer(
-            augmentation_list=augmentation_list,
-            window_name=window_name,
-            window_depth=window_depth,
-            window_length=window_length,
-            window_step=window_step,
-            rescaling=rescaling,
-            sig_tfm=sig_tfm,
-            depth=depth,
-        )
+        self.signature_transform = None
         self.n_jobs = n_jobs
+        self.mahal_distance = None
+        self.signatures = None
         self.knn = None
 
-    def fit(self, X):
+    def fit(
+        self,
+        X: np.ndarray | None = None,
+        signatures: np.ndarray | None = None,
+        knn_algorithm: str = "auto",
+        **kwargs,
+    ) -> None:
         """
-        __description__
+        Fit the KNN model with the corpus of signatures.
+        If signatures is not provided, then X must be provided
+        to compute the signatures.
+        If signatures is provided, then X is ignored.
 
-        :param X: Must support index operation X[i] where each X[i] returns a data point in the corpus
-
-        :return:
+        Parameters
+        ----------
+        X : np.ndarray | None, optional
+            Data points, by default None.
+            Must support index operation X[i] where
+            each X[i] returns a data point in the corpus.
+        signatures : np.ndarray | None, optional
+            Signatures of the data points, by default None.
+            Must support index operation X[i] where
+            each X[i] returns a data point in the corpus.
+        knn_algorithm : str, optional
+            Algorithm used to compute the nearest neighbors
+            (see scikit-learn documentation for `sklearn.neighbors.NearestNeighbors`),
+            by default "auto".
+        **kwargs
+            Keyword arguments passed to the signature transformer if
+            signatures are not provided and X is provided.
+            See sktime documentation for
+            `sktime.transformations.panel.signature_based.SignatureTransformer`
+            for more details on what arguments are available.
+            Some notable options are:
+                - augmentation_list: tuple[str], Possible augmentation strings are
+                  ['leadlag', 'ir', 'addtime', 'cumsum', 'basepoint']
+                - window_name: str, String from
+                  ['global', 'sliding', 'expanding', 'dyadic']
+                - window_depth: int, The depth of the dyadic window.
+                  (Active only if `window_name == 'dyadic']`.
+                - window_length: int, The length of the sliding/expanding window.
+                  (Active only if `window_name in ['sliding, 'expanding'].
+                - window_step: int, The step of the sliding/expanding window.
+                  (Active only if `window_name in ['sliding, 'expanding'].
+                - rescaling: "pre" or "post",
+                    - "pre": rescale the path last signature term should
+                      be roughly O(1)
+                    - "post": Rescals the output signature by multiplying
+                      the depth-d term by d!. Aim is that every term become ~O(1).
+                - sig_tfm: One of: ['signature', 'logsignature']).
+                - depth: int, Signature truncation depth.
+            By default, the following arguments are used:
+                - augmentation_list: ("addtime",)
+                - window_name: "global"
+                - window_depth: None
+                - window_length: None
+                - window_step: None
+                - rescaling: None
+                - sig_tfm: "signature"
+                - depth: 2
         """
-        sigs = Parallel(n_jobs=self.n_jobs)(
-            delayed(self.signature_transform.fit_transform)(X[i]) for i in range(len(X))
-        )
-        sigs = pd.concat(sigs)
+        if signatures is None:
+            if X is None:
+                raise ValueError(X_OR_SIGNATURE_ERROR_MSG)
 
-        mahal_distance = Mahalanobis()
-        mahal_distance.fit(sigs)
+            from sktime.transformations.panel.signature_based import (
+                SignatureTransformer,
+            )
 
+            # set default kwargs for signature transformer if not provided
+            if kwargs == {}:
+                kwargs = {
+                    "augmentation_list": ("addtime",),
+                    "window_name": "global",
+                    "window_depth": None,
+                    "window_length": None,
+                    "window_step": None,
+                    "rescaling": None,
+                    "sig_tfm": "signature",
+                    "depth": 2,
+                }
+
+            self.signature_transform = SignatureTransformer(
+                **kwargs,
+            )
+
+            # compute signatures
+            sigs = Parallel(n_jobs=self.n_jobs)(
+                delayed(self.signature_transform.fit_transform)(X[i])
+                for i in range(len(X))
+            )
+            self.signatures = pd.concat(sigs)
+        else:
+            self.signatures = signatures
+
+        # fit mahalanobis distance for the signatures
+        self.mahal_distance = Mahalanobis()
+        self.mahal_distance.fit(self.signatures)
+
+        # fit knn for the mahalanobis distance
         knn = NearestNeighbors(
-            metric=mahal_distance.distance, n_jobs=self.n_jobs, algorithm="auto"
+            metric=self.mahal_distance.distance,
+            n_jobs=self.n_jobs,
+            algorithm=knn_algorithm,
         )
-        knn.fit(sigs)
+        knn.fit(self.signatures)
         self.knn = knn
 
-    def conformance(self, X):
+    def conformance(
+        self,
+        X: np.ndarray | None = None,
+        signatures: np.ndarray | None = None,
+    ) -> np.ndarray:
         """
-        __description__
+        Compute the conformance scores for the data points either passed in
+        directly as X or the signatures of the data points in signatures.
+        If signatures is not provided, then X must be provided
+        to compute the signatures.
+        If signatures is provided, then X is ignored.
 
-        :param X: Must support index operation X[i] where each X[i] returns a data point
+        Must call fit() method first.
 
-        :return:
+        Parameters
+        ----------
+        X : np.ndarray | None, optional
+            Data points, by default None.
+            Must support index operation X[i] where
+            each X[i] returns a data point in the corpus.
+        signatures : np.ndarray | None, optional
+            Signatures of the data points, by default None.
+            Must support index operation X[i] where
+            each X[i] returns a data point in the corpus.
+
+        Returns
+        -------
+        np.ndarray
+            Conformance scores for data points provided.
         """
-        sigs = Parallel(n_jobs=self.n_jobs)(
-            delayed(self.signature_transform.fit_transform)(X[i]) for i in range(len(X))
+        if self.knn is None:
+            raise ValueError(MODEL_NOT_FITTED_ERROR_MSG)
+
+        if signatures is None:
+            if X is None:
+                raise ValueError(X_OR_SIGNATURE_ERROR_MSG)
+            if self.signature_transform is None:
+                raise ValueError(MODEL_NOT_FITTED_ERROR_MSG)
+
+            # compute signatures
+            sigs = Parallel(n_jobs=self.n_jobs)(
+                delayed(self.signature_transform.fit_transform)(X[i])
+                for i in range(len(X))
+            )
+            signatures = pd.concat(sigs)
+
+        # compute KNN distances for the signatures of the data points
+        # against the signatures of the corpus
+        distances, _ = self.knn.kneighbors(
+            signatures, n_neighbors=1, return_distance=True
         )
-        sigs = pd.concat(sigs)
-
-        distances, _ = self.knn.kneighbors(sigs, n_neighbors=1)
 
         return distances
-
-    def compute_auc(self, test_in, test_out):
-        """
-        __description__
-
-        :param test_in:
-        :param test_out:
-
-        :return:
-        """
-        distances_in = self.conformance(test_in)
-        distances_out = self.conformance(test_out)
-        return self.compute_auc_given_dists(distances_in, distances_out)
-
-    def compute_auc_given_dists(self, distances_in, distances_out):
-        """
-        __description__
-
-        :param distances_in:
-        :param distances_out:
-
-        :return:
-        """
-        # replace infinity with twice of the maximum value, hacky, may need more thoughts
-        distances_in[distances_in == np.inf] = np.nan
-        distances_out[distances_out == np.inf] = np.nan
-        max_val = max(np.nanmax(distances_in), np.nanmax(distances_out))
-        distances_in = np.nan_to_num(distances_in, max_val * 2)
-        distances_out = np.nan_to_num(distances_out, max_val * 2)
-
-        return roc_auc_score(
-            [False] * len(distances_in) + [True] * len(distances_out),
-            np.concatenate([distances_in, distances_out]),
-        )

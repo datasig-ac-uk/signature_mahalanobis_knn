@@ -41,14 +41,16 @@ class Mahalanobis:
         # numerical rank of the corpus
         self.numerical_rank: int | None = None
 
-    def fit(self, X: np.ndarray, **kwargs) -> None:
+    def fit(self, X: np.ndarray, y: None = None, **kwargs) -> None:  # noqa: ARG002
         """
         Fit the object to a corpus X.
 
-        :param X: numpy array, panel data representing the corpus, each row is a data point
-        :param y: No use, here for interface consistency
-
-        :return: None
+        Parameters
+        ----------
+        X : np.ndarray
+            Panel data representing the corpus, each row is a data point.
+        y: None
+            Not used, present for API consistency by convention.
         """
         # mean centering
         self.mu = np.mean(X, axis=0)
@@ -57,8 +59,8 @@ class Mahalanobis:
         U, S, Vt = np.linalg.svd(X)
         k = np.sum(self.svd_thres <= S)  # detected numerical rank
         self.numerical_rank = k
-        self.Vt = Vt[:k]
-        self.S = S[:k]
+        self.Vt = Vt[:k].astype(self.default_dtype)
+        self.S = S[:k].astype(self.default_dtype)
 
     @staticmethod
     @jit(nopython=True)  # Observe 6 times speed up on pen-digit dataset
@@ -73,20 +75,31 @@ class Mahalanobis:
         """
         Compute the variance norm between x1 and x2 using the precomputed SVD.
 
-        :param x1: 1D array, row vector
-        :param x2: 1D array, row vector
-        :param Vt: 2D array, truncated right singular matrix transposed of the corpus
-        :param S: 1D array, truncated singular values of the corpus
-        :subspace_thres: float, threshold to decide whether a point is in the data subspace
+        Parameters
+        ----------
+        x1 : np.ndarray
+            One-dimensional array.
+        x2 : np.ndarray
+            One-dimensional array.
+        Vt : np.ndarray
+            Two-dimensional arrat, truncated right singular matrix transposed of the corpus.
+        S : np.ndarray
+            One-dimensional array, truncated singular values of the corpus.
+        subspace_thres : float
+            Threshold to decide whether a point is in the data subspace.
 
-        :return: a value representing distance between x, y
+        Returns
+        -------
+        float
+            Value representing distance between x, y.
         """
         x = x1 - x2
-        # quantifies the amount that x is outside the row-subspace
-        if np.linalg.norm(x) < zero_thres:
+        norm_x = np.linalg.norm(x)
+        if norm_x < zero_thres:
             return 0.0
-        rho = np.linalg.norm(x - x @ Vt.T @ Vt) / np.linalg.norm(x)
 
+        # quantifies the amount that x is outside the row-subspace
+        rho = np.linalg.norm(x - x @ Vt.T @ Vt) / norm_x
         if rho > subspace_thres:
             return np.inf
 
@@ -94,16 +107,27 @@ class Mahalanobis:
 
     def distance(self, x1: np.ndarray, x2: np.ndarray) -> float:
         """
-        Compute the variance norm between x1 and x2.
+        Compute the variance norm between x1 and x2 using the precomputed SVD.
 
-        :param x1: 1D array, row vector
-        :param x2: 1D array, row vector
+        Parameters
+        ----------
+        x1 : np.ndarray
+            One-dimensional array.
+        x2 : np.ndarray
+            One-dimensional array.
 
-        :return: a value representing distance between x, y
+        Returns
+        -------
+        float
+            Value representing distance between x, y.
         """
         if self.numerical_rank is None:
             msg = "Mahalanobis distance is not fitted yet."
             raise ValueError(msg)
+
+        # ensure inputs are the right data type
+        x1 = x1.astype(self.default_dtype)
+        x2 = x2.astype(self.default_dtype)
 
         return self.calc_distance(
             x1=x1,
