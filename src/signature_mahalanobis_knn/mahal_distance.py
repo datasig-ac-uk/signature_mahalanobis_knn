@@ -68,22 +68,14 @@ class Mahalanobis:
         self.Vt = Vt[:k].astype(self.default_dtype)
         self.S = S[:k].astype(self.default_dtype)
 
-        # compute the quantities that are used in the distance function to avoid recomputation
-        # compute the gram matrix of the truncated right singular matrix
-        self.Vt_gram = (self.Vt.T @ self.Vt).astype(self.default_dtype)
-        # compute the pseudo-inverse of X
-        self.psuedo_inv = (self.Vt.T @ np.diag(self.S ** (-2)) @ self.Vt).astype(
-            self.default_dtype
-        )
-
     @staticmethod
     @njit(fastmath=True)
     # Observe 6 times speed up on pen-digit dataset
     def calc_distance(
         x1: np.ndarray,
         x2: np.ndarray,
-        Vt_gram: np.ndarray,
-        psuedo_inv: np.ndarray,
+        Vt: np.ndarray,
+        S: np.ndarray,
         subspace_thres: float,
         zero_thres: float,
     ) -> float:
@@ -96,12 +88,10 @@ class Mahalanobis:
             One-dimensional array.
         x2 : np.ndarray
             One-dimensional array.
-        Vt_gram : np.ndarray
-            Two-dimensional array, which is the gram matrix of the
-            truncated right singular matrix, i.e. Vt_gram = Vt.T @ Vt.
-        psuedo_inv : np.ndarray
-            Two-dimensional array, which is the pseudo-inverse of the corpus,
-            i.e. psuedo_inv = Vt.T @ np.diag(S ** (-2)) @ Vt.
+        Vt : np.ndarray
+            Two-dimensional arrat, truncated right singular matrix transposed of the corpus.
+        S : np.ndarray
+            One-dimensional array, truncated singular values of the corpus.
         subspace_thres : float
             Threshold to decide whether a point is in the data subspace.
 
@@ -116,13 +106,11 @@ class Mahalanobis:
             return 0.0
 
         # quantifies the amount that x is outside the row-subspace
-        rho = np.linalg.norm(x - x @ Vt_gram) / norm_x
+        rho = np.linalg.norm(x - x @ Vt.T @ Vt) / norm_x
         if rho > subspace_thres:
             return np.inf
 
-        # can save computation by taking this once and storing it
-        # same as above
-        return x @ psuedo_inv @ x.T
+        return x @ Vt.T @ np.diag(S ** (-2)) @ Vt @ x.T
 
     def distance(self, x1: np.ndarray, x2: np.ndarray) -> float:
         """
@@ -151,8 +139,8 @@ class Mahalanobis:
         return self.calc_distance(
             x1=x1,
             x2=x2,
-            Vt_gram=self.Vt_gram,
-            psuedo_inv=self.psuedo_inv,
+            Vt=self.Vt,
+            S=self.S,
             subspace_thres=self.subspace_thres,
             zero_thres=self.zero_thres,
         )

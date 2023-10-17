@@ -135,16 +135,19 @@ class SignatureMahalanobisKNN:
         self.mahal_distance = Mahalanobis()
         self.mahal_distance.fit(self.signatures)
 
+        # set metric parameters for NearestNeighbors and NNDescent
+        metric_params = {
+            "Vt": self.mahal_distance.Vt,
+            "S": self.mahal_distance.S,
+            "subspace_thres": self.mahal_distance.subspace_thres,
+            "zero_thres": self.mahal_distance.zero_thres,
+        }
+
         if knn_library == "sklearn":
             # fit knn for the mahalanobis distance
             knn = NearestNeighbors(
                 metric=self.mahal_distance.calc_distance,
-                metric_params={
-                    "Vt_gram": self.mahal_distance.Vt_gram,
-                    "S": self.mahal_distance.S,
-                    "subspace_thres": self.mahal_distance.subspace_thres,
-                    "zero_thres": self.mahal_distance.zero_thres,
-                },
+                metric_params=metric_params,
                 n_jobs=self.n_jobs,
                 algorithm=knn_algorithm,
                 **kwargs,
@@ -156,12 +159,7 @@ class SignatureMahalanobisKNN:
             knn = NNDescent(
                 data=self.signatures,
                 metric=self.mahal_distance.calc_distance,
-                metric_kwds={
-                    "Vt_gram": self.mahal_distance.Vt_gram,
-                    "S": self.mahal_distance.S,
-                    "subspace_thres": self.mahal_distance.subspace_thres,
-                    "zero_thres": self.mahal_distance.zero_thres,
-                },
+                metric_kwds=metric_params,
                 n_jobs=self.n_jobs,
                 **kwargs,
             )
