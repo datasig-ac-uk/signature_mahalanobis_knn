@@ -41,11 +41,6 @@ class Mahalanobis:
         # numerical rank of the corpus
         self.numerical_rank: int | None = None
         self.default_dtype = np.float32
-        # quantities requires to compute the distance (save to avoid recomputation)
-        # gram matrix of the truncated right singular matrix
-        self.Vt_gram: np.ndarray | None = None
-        # pseudo-inverse of the corpus
-        self.psuedo_inv: np.ndarray | None = None
 
     def fit(self, X: np.ndarray, y: None = None, **kwargs) -> None:  # noqa: ARG002
         """
