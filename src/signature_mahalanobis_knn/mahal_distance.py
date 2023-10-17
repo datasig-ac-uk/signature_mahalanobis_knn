@@ -65,7 +65,6 @@ class Mahalanobis:
 
     @staticmethod
     @njit(fastmath=True)
-    # Observe 6 times speed up on pen-digit dataset
     def calc_distance(
         x1: np.ndarray,
         x2: np.ndarray,
