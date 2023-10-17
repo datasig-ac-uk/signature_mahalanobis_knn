@@ -3,6 +3,7 @@ from __future__ import annotations
 import numpy as np
 import pandas as pd
 from joblib import Parallel, delayed
+from pynndescent import NNDescent
 from sklearn.metrics import roc_auc_score
 from sklearn.neighbors import NearestNeighbors
 
@@ -13,26 +14,27 @@ from signature_mahalanobis_knn.utils import plot_roc_curve
 class SignatureMahalanobisKNN:
     def __init__(
         self,
-        n_jobs: int = -2,
+        n_jobs: int = 1,
     ):
         """
         Parameters
         ----------
         n_jobs : int, optional
-            Parameter for joblib, number of parallel processors to use, by default -2.
+            Parameter for joblib, number of parallel processors to use, by default 1.
             -1 means using all processors, -2 means using all processors but one.
         """
         self.signature_transform = None
         self.n_jobs = n_jobs
-        self.mahal_distance = None
         self.signatures = None
         self.knn = None
 
     def fit(
         self,
+        knn_library: str = "sklearn",
         X: np.ndarray | None = None,
         signatures: np.ndarray | None = None,
         knn_algorithm: str = "auto",
+        signature_kwargs: dict | None = None,
         **kwargs,
     ) -> None:
         """
@@ -55,11 +57,15 @@ class SignatureMahalanobisKNN:
             Algorithm used to compute the nearest neighbors
             (see scikit-learn documentation for `sklearn.neighbors.NearestNeighbors`),
             by default "auto".
-        **kwargs
+        signature_kwargs : dict | None, optional
             Keyword arguments passed to the signature transformer if
             signatures are not provided and X is provided.
             See sktime documentation for
             `sktime.transformations.panel.signature_based.SignatureTransformer`.
+        **kwargs
+            Keyword arguments passed to the knn library.
+            See scikit-learn documentation for `sklearn.neighbors.NearestNeighbors`
+            and pynndescent documentation for `pynndescent.NNDescent`.
         """
         if signatures is None:
             if X is None:
@@ -71,8 +77,8 @@ class SignatureMahalanobisKNN:
             )
 
             # set default kwargs for signature transformer if not provided
-            if kwargs == {}:
-                kwargs = {
+            if signature_kwargs is None or signature_kwargs == {}:
+                signature_kwargs = {
                     "augmentation_list": ("addtime",),
                     "window_name": "global",
                     "window_depth": None,
@@ -84,7 +90,7 @@ class SignatureMahalanobisKNN:
                 }
 
             self.signature_transform = SignatureTransformer(
-                **kwargs,
+                **signature_kwargs,
             )
 
             # compute signatures
@@ -100,14 +106,37 @@ class SignatureMahalanobisKNN:
         self.mahal_distance = Mahalanobis()
         self.mahal_distance.fit(self.signatures)
 
-        # fit knn for the mahalanobis distance
-        knn = NearestNeighbors(
-            metric=self.mahal_distance.distance,
-            n_jobs=self.n_jobs,
-            algorithm=knn_algorithm,
-        )
-        knn.fit(self.signatures)
-        self.knn = knn
+        if knn_library == "sklearn":
+            # fit knn for the mahalanobis distance
+            knn = NearestNeighbors(
+                metric=self.mahal_distance.calc_distance,
+                metric_params={
+                    "Vt_gram": self.mahal_distance.Vt_gram,
+                    "S": self.mahal_distance.S,
+                    "subspace_thres": self.mahal_distance.subspace_thres,
+                    "zero_thres": self.mahal_distance.zero_thres,
+                },
+                n_jobs=self.n_jobs,
+                algorithm=knn_algorithm,
+                **kwargs,
+            )
+            knn.fit(self.signatures)
+            self.knn = knn
+        elif knn_library == "pynndescent":
+            # fit pynndescent for the mahalanobis distance
+            knn = NNDescent(
+                data=self.signatures,
+                metric=self.mahal_distance.calc_distance,
+                metric_kwds={
+                    "Vt_gram": self.mahal_distance.Vt_gram,
+                    "S": self.mahal_distance.S,
+                    "subspace_thres": self.mahal_distance.subspace_thres,
+                    "zero_thres": self.mahal_distance.zero_thres,
+                },
+                n_jobs=self.n_jobs,
+                **kwargs,
+            )
+            self.knn = knn
 
     def conformance(
         self,
@@ -158,13 +187,18 @@ class SignatureMahalanobisKNN:
             )
             signatures = pd.concat(sigs)
 
-        # compute KNN distances for the signatures of the data points
-        # against the signatures of the corpus
-        distances, _ = self.knn.kneighbors(
-            signatures, n_neighbors=1, return_distance=True
-        )
+        if isinstance(self.knn, NearestNeighbors):
+            # compute KNN distances for the signatures of the data points
+            # against the signatures of the corpus
+            distances, _ = self.knn.kneighbors(
+                signatures, n_neighbors=1, return_distance=True
+            )
+        elif isinstance(self.knn, NNDescent):
+            # compute KNN distances for the signatures of the data points
+            # against the signatures of the corpus
+            _, distances = self.knn.query(signatures, k=1)
 
-        return distances
+        return distances[:, 0]
 
     def compute_auc_given_dists(
         self,
