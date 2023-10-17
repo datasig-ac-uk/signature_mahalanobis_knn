@@ -26,6 +26,7 @@ class SignatureMahalanobisKNN:
         """
         self.signature_transform = None
         self.n_jobs = n_jobs
+        self.mahal_distance = None
         self.signatures = None
         self.knn = None
 
