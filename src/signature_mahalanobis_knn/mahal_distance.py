@@ -32,15 +32,20 @@ class Mahalanobis:
         self.zero_thres: float = zero_thres
 
         # set the following after fit() is called - None means not fitted yet
-        # truncated right singular matrix transposed of the corpus
-        self.Vt: np.ndarray | None = None
         # nean of the corpus
         self.mu: np.ndarray | None = None
+        # truncated right singular matrix transposed of the corpus
+        self.Vt: np.ndarray | None = None
         # truncated singular values of the corpus
         self.S: np.ndarray | None = None
         # numerical rank of the corpus
         self.numerical_rank: int | None = None
         self.default_dtype = np.float32
+        # quantities requires to compute the distance (save to avoid recomputation)
+        # gram matrix of the truncated right singular matrix
+        self.Vt_gram: np.ndarray | None = None
+        # pseudo-inverse of the corpus
+        self.psuedo_inv: np.ndarray | None = None
 
     def fit(self, X: np.ndarray, y: None = None, **kwargs) -> None:  # noqa: ARG002
         """
@@ -57,7 +62,7 @@ class Mahalanobis:
         self.mu = np.mean(X, axis=0)
         X = X - self.mu
 
-        U, S, Vt = np.linalg.svd(X)
+        _, S, Vt = np.linalg.svd(X)
         k = np.sum(self.svd_thres <= S)  # detected numerical rank
         self.numerical_rank = k
         self.Vt = Vt[:k].astype(self.default_dtype)
