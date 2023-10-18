@@ -33,8 +33,8 @@ class SignatureMahalanobisKNN:
     def fit(
         self,
         knn_library: str = "sklearn",
-        X: np.ndarray | None = None,
-        signatures: np.ndarray | None = None,
+        X_train: np.ndarray | None = None,
+        signatures_train: np.ndarray | None = None,
         knn_algorithm: str = "auto",
         signature_kwargs: dict | None = None,
         **kwargs,
@@ -47,11 +47,11 @@ class SignatureMahalanobisKNN:
 
         Parameters
         ----------
-        X : np.ndarray | None, optional
+        X_train : np.ndarray | None, optional
             Data points, by default None.
             Must support index operation X[i] where
             each X[i] returns a data point in the corpus.
-        signatures : np.ndarray | None, optional
+        signatures_train : np.ndarray | None, optional
             Signatures of the data points, by default None.
             Must support index operation X[i] where
             each X[i] returns a data point in the corpus.
@@ -97,8 +97,8 @@ class SignatureMahalanobisKNN:
             See scikit-learn documentation for `sklearn.neighbors.NearestNeighbors`
             and pynndescent documentation for `pynndescent.NNDescent`.
         """
-        if signatures is None:
-            if X is None:
+        if signatures_train is None:
+            if X_train is None:
                 raise ValueError(X_OR_SIGNATURE_ERROR_MSG)
 
             from sktime.transformations.panel.signature_based import (
@@ -124,42 +124,32 @@ class SignatureMahalanobisKNN:
 
             # compute signatures
             sigs = Parallel(n_jobs=self.n_jobs)(
-                delayed(self.signature_transform.fit_transform)(X[i])
-                for i in range(len(X))
+                delayed(self.signature_transform.fit_transform)(X_train[i])
+                for i in range(len(X_train))
             )
-            self.signatures = pd.concat(sigs)
+            self.signatures_train = pd.concat(sigs)
         else:
-            self.signatures = signatures
+            self.signatures_train = signatures_train
 
-        # fit mahalanobis distance for the signatures
+        # fit mahalanobis distance for the signatures_train
         self.mahal_distance = Mahalanobis()
-        self.mahal_distance.fit(self.signatures)
-
-        # set metric parameters for NearestNeighbors and NNDescent
-        metric_params = {
-            "Vt": self.mahal_distance.Vt,
-            "S": self.mahal_distance.S,
-            "subspace_thres": self.mahal_distance.subspace_thres,
-            "zero_thres": self.mahal_distance.zero_thres,
-        }
+        self.mahal_distance.fit(self.signatures_train)
 
         if knn_library == "sklearn":
             # fit knn for the mahalanobis distance
             knn = NearestNeighbors(
-                metric=self.mahal_distance.calc_distance,
-                metric_params=metric_params,
+                metric="euclidean",
                 n_jobs=self.n_jobs,
                 algorithm=knn_algorithm,
                 **kwargs,
             )
-            knn.fit(self.signatures)
+            knn.fit(self.mahal_distance.U)
             self.knn = knn
         elif knn_library == "pynndescent":
             # fit pynndescent for the mahalanobis distance
             knn = NNDescent(
-                data=self.signatures,
-                metric=self.mahal_distance.calc_distance,
-                metric_kwds=metric_params,
+                data=self.mahal_distance.U,
+                metric="euclidean",
                 n_jobs=self.n_jobs,
                 **kwargs,
             )
@@ -167,8 +157,8 @@ class SignatureMahalanobisKNN:
 
     def conformance(
         self,
-        X: np.ndarray | None = None,
-        signatures: np.ndarray | None = None,
+        X_test: np.ndarray | None = None,
+        signatures_test: np.ndarray | None = None,
     ) -> np.ndarray:
         """
         Compute the conformance scores for the data points either passed in
@@ -198,28 +188,66 @@ class SignatureMahalanobisKNN:
         if self.knn is None:
             raise ValueError(MODEL_NOT_FITTED_ERROR_MSG)
 
-        if signatures is None:
-            if X is None:
+        if signatures_test is None:
+            if X_test is None:
                 raise ValueError(X_OR_SIGNATURE_ERROR_MSG)
             if self.signature_transform is None:
                 raise ValueError(MODEL_NOT_FITTED_ERROR_MSG)
 
             # compute signatures
             sigs = Parallel(n_jobs=self.n_jobs)(
-                delayed(self.signature_transform.fit_transform)(X[i])
-                for i in range(len(X))
+                delayed(self.signature_transform.fit_transform)(X_test[i])
+                for i in range(len(X_test))
             )
-            signatures = pd.concat(sigs)
+            signatures_test = pd.concat(sigs)
 
+        # pre-process the signatures
+        sig_dim = signatures_test.shape[1]
+        modified_signatures = (
+            signatures_test
+            @ self.mahal_distance.Vt.T
+            @ np.diag(self.mahal_distance.S ** (-1))
+        )
+
+        # compute Euclidean NNs
         if isinstance(self.knn, NearestNeighbors):
-            # compute KNN distances for the signatures of the data points
-            # against the signatures of the corpus
-            distances, _ = self.knn.kneighbors(
-                signatures, n_neighbors=1, return_distance=True
+            # compute KNN distances for the modified_signatures of the data points
+            # against the modified_signatures of the corpus
+            candidate_distances, train_indices = self.knn.kneighbors(
+                modified_signatures, n_neighbors=1, return_distance=True
             )
         elif isinstance(self.knn, NNDescent):
-            # compute KNN distances for the signatures of the data points
-            # against the signatures of the corpus
-            _, distances = self.knn.query(signatures, k=1)
+            # compute KNN distances for the modified_signatures of the data points
+            # against the modified_signatures of the corpus
+            train_indices, candidate_distances = self.knn.query(
+                modified_signatures, k=1
+            )
 
-        return distances[:, 0]
+        candidate_distances = candidate_distances[:, 0]
+
+        # post-process the candidate distances
+        test_indices = np.tile(
+            np.arange(train_indices.shape[0]), (train_indices.shape[1], 1)
+        ).T
+        # differences has shape (n_test x n_neighbors x sig_dim)
+        differences = (
+            self.sigatures_train[train_indices] - signatures_test[test_indices]
+        )
+
+        denominator = np.linalg.norm(differences, axis=-1)
+        numerator = np.linalg.norm(
+            differences
+            @ (
+                np.identity(sig_dim) - self.mahal_distance.Vt.T @ self.mahal_distance.Vt
+            ),
+            axis=-1,
+        )
+
+        rho = numerator / denominator
+        # get rid of nans from zero denominator
+        rho[denominator == 0] = 0
+
+        candidate_distances[denominator < self.mahal_distance.zero_thres] = 0
+        candidate_distances[rho > self.mahal_distance.subspace_thres] = np.inf
+
+        return candidate_distances
