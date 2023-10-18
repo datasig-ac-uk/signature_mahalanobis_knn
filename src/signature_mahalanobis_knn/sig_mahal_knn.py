@@ -27,7 +27,7 @@ class SignatureMahalanobisKNN:
         self.signature_transform = None
         self.n_jobs = n_jobs
         self.mahal_distance = None
-        self.signatures = None
+        self.signatures_train = None
         self.knn = None
 
     def fit(
@@ -40,28 +40,29 @@ class SignatureMahalanobisKNN:
         **kwargs,
     ) -> None:
         """
-        Fit the KNN model with the corpus of signatures.
-        If signatures is not provided, then X must be provided
-        to compute the signatures.
-        If signatures is provided, then X is ignored.
+        Fit the KNN model with the corpus of signatures_train.
+        If signatures_train is not provided, then X_train must be provided
+        to compute the signatures_train.
+        If signatures_train is provided, then X_train is ignored.
 
         Parameters
         ----------
         X_train : np.ndarray | None, optional
             Data points, by default None.
-            Must support index operation X[i] where
-            each X[i] returns a data point in the corpus.
+            Must support index operation X_train[i] where
+            each X_train[i] returns a data point in the corpus.
+            Typically a three-dimensional array of shape
+            (batch, length, channels).
         signatures_train : np.ndarray | None, optional
             Signatures of the data points, by default None.
-            Must support index operation X[i] where
-            each X[i] returns a data point in the corpus.
+            Two dimensional array of shape (n_samples, sig_dim).
         knn_algorithm : str, optional
             Algorithm used to compute the nearest neighbors
             (see scikit-learn documentation for `sklearn.neighbors.NearestNeighbors`),
             by default "auto".
         signature_kwargs : dict | None, optional
             Keyword arguments passed to the signature transformer if
-            signatures are not provided and X is provided.
+            signatures_train are not provided and X_train is provided.
             See sktime documentation for
             `sktime.transformations.panel.signature_based.SignatureTransformer`
             for more details on what arguments are available.
@@ -162,23 +163,24 @@ class SignatureMahalanobisKNN:
     ) -> np.ndarray:
         """
         Compute the conformance scores for the data points either passed in
-        directly as X or the signatures of the data points in signatures.
-        If signatures is not provided, then X must be provided
-        to compute the signatures.
-        If signatures is provided, then X is ignored.
+        directly as X_test or the signatures_test of the data points in signatures_test.
+        If signatures_test is not provided, then X_test must be provided
+        to compute the signatures_test.
+        If signatures_test is provided, then X_test is ignored.
 
         Must call fit() method first.
 
         Parameters
         ----------
-        X : np.ndarray | None, optional
+        X_test : np.ndarray | None, optional
             Data points, by default None.
-            Must support index operation X[i] where
-            each X[i] returns a data point in the corpus.
-        signatures : np.ndarray | None, optional
+            Must support index operation X_test[i] where
+            each X_test[i] returns a data point in the corpus.
+            Typically a three-dimensional array of shape
+            (batch, length, channels).
+        signatures_test : np.ndarray | None, optional
             Signatures of the data points, by default None.
-            Must support index operation X[i] where
-            each X[i] returns a data point in the corpus.
+            Two dimensional array of shape (n_samples, sig_dim).
 
         Returns
         -------
