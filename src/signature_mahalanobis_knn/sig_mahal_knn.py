@@ -216,16 +216,14 @@ class SignatureMahalanobisKNN:
             # compute KNN distances for the modified_signatures of the data points
             # against the modified_signatures of the corpus
             candidate_distances, train_indices = self.knn.kneighbors(
-                modified_signatures, n_neighbors=1, return_distance=True
+                modified_signatures, n_neighbors=30, return_distance=True
             )
         elif isinstance(self.knn, NNDescent):
             # compute KNN distances for the modified_signatures of the data points
             # against the modified_signatures of the corpus
             train_indices, candidate_distances = self.knn.query(
-                modified_signatures, k=1
+                modified_signatures, k=30
             )
-
-        candidate_distances = candidate_distances[:, 0]
 
         # post-process the candidate distances
         test_indices = np.tile(
@@ -252,4 +250,5 @@ class SignatureMahalanobisKNN:
         candidate_distances[denominator < self.mahal_distance.zero_thres] = 0
         candidate_distances[rho > self.mahal_distance.subspace_thres] = np.inf
 
-        return candidate_distances
+        # compute the minimum of the candidate distances for each data point
+        return np.min(candidate_distances, axis=-1)
