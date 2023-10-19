@@ -57,9 +57,10 @@ class Mahalanobis:
         self.mu = np.mean(X, axis=0)
         X = X - self.mu
 
-        _, S, Vt = np.linalg.svd(X)
+        U, S, Vt = np.linalg.svd(X)
         k = np.sum(self.svd_thres <= S)  # detected numerical rank
         self.numerical_rank = k
+        self.U = U[:, :k].astype(self.default_dtype)
         self.Vt = Vt[:k].astype(self.default_dtype)
         self.S = S[:k].astype(self.default_dtype)
 
