@@ -24,11 +24,11 @@ class SignatureMahalanobisKNN:
             Parameter for joblib, number of parallel processors to use, by default 1.
             -1 means using all processors, -2 means using all processors but one.
         """
-        self.signature_transform = None
-        self.n_jobs = n_jobs
-        self.mahal_distance = None
-        self.signatures_train = None
-        self.knn = None
+        self.signature_transform: object | None = None
+        self.n_jobs: int = n_jobs
+        self.mahal_distance: Mahalanobis | None = None
+        self.signatures_train: np.array | None = None
+        self.knn: NearestNeighbors | NNDescent | None = None
 
     def fit(
         self,
@@ -128,7 +128,7 @@ class SignatureMahalanobisKNN:
                 delayed(self.signature_transform.fit_transform)(X_train[i])
                 for i in range(len(X_train))
             )
-            self.signatures_train = pd.concat(sigs)
+            self.signatures_train = np.array(pd.concat(sigs))
         else:
             self.signatures_train = signatures_train
 
@@ -160,6 +160,7 @@ class SignatureMahalanobisKNN:
         self,
         X_test: np.ndarray | None = None,
         signatures_test: np.ndarray | None = None,
+        n_neighbors: int = 20,
     ) -> np.ndarray:
         """
         Compute the conformance scores for the data points either passed in
@@ -201,7 +202,7 @@ class SignatureMahalanobisKNN:
                 delayed(self.signature_transform.fit_transform)(X_test[i])
                 for i in range(len(X_test))
             )
-            signatures_test = pd.concat(sigs)
+            signatures_test = np.array(pd.concat(sigs))
 
         # pre-process the signatures
         sig_dim = signatures_test.shape[1]
@@ -216,13 +217,13 @@ class SignatureMahalanobisKNN:
             # compute KNN distances for the modified_signatures of the data points
             # against the modified_signatures of the corpus
             candidate_distances, train_indices = self.knn.kneighbors(
-                modified_signatures, n_neighbors=30, return_distance=True
+                modified_signatures, n_neighbors=n_neighbors, return_distance=True
             )
         elif isinstance(self.knn, NNDescent):
             # compute KNN distances for the modified_signatures of the data points
             # against the modified_signatures of the corpus
             train_indices, candidate_distances = self.knn.query(
-                modified_signatures, k=30
+                modified_signatures, k=n_neighbors
             )
 
         # post-process the candidate distances
@@ -231,7 +232,7 @@ class SignatureMahalanobisKNN:
         ).T
         # differences has shape (n_test x n_neighbors x sig_dim)
         differences = (
-            self.sigatures_train[train_indices] - signatures_test[test_indices]
+            self.signatures_train[train_indices] - signatures_test[test_indices]
         )
 
         denominator = np.linalg.norm(differences, axis=-1)
