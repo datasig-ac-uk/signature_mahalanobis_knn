@@ -127,7 +127,7 @@ class SignatureMahalanobisKNN:
                 delayed(self.signature_transform.fit_transform)(X[i])
                 for i in range(len(X))
             )
-            self.signatures = pd.concat(sigs)
+            self.signatures = np.array(pd.concat(sigs))
         else:
             self.signatures = signatures
 
@@ -209,7 +209,7 @@ class SignatureMahalanobisKNN:
                 delayed(self.signature_transform.fit_transform)(X[i])
                 for i in range(len(X))
             )
-            signatures = pd.concat(sigs)
+            signatures = np.array(pd.concat(sigs))
 
         if isinstance(self.knn, NearestNeighbors):
             # compute KNN distances for the signatures of the data points
