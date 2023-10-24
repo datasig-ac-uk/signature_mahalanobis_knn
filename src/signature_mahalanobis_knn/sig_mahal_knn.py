@@ -206,7 +206,7 @@ class SignatureMahalanobisKNN:
         # pre-process the signatures
         sig_dim = signatures_test.shape[1]
         modified_signatures = (
-            signatures_test
+            (signatures_test - self.mahal_distance.mu)
             @ self.mahal_distance.Vt.T
             @ np.diag(self.mahal_distance.S ** (-1))
         )
