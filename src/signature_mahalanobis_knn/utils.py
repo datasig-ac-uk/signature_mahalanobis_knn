@@ -83,8 +83,8 @@ def compute_auc_given_dists(
     distances_out[distances_out == np.inf] = np.nan
     max_val = max(np.nanmax(distances_in), np.nanmax(distances_out))
     two_times_max = 2 * max_val
-    distances_in = np.nan_to_num(distances_in, two_times_max)
-    distances_out = np.nan_to_num(distances_out, two_times_max)
+    distances_in = np.nan_to_num(distances_in, nan=two_times_max)
+    distances_out = np.nan_to_num(distances_out, nan=two_times_max)
 
     y_true = [0] * len(distances_in) + [1] * len(distances_out)
     y_score = np.concatenate([distances_in, distances_out])
