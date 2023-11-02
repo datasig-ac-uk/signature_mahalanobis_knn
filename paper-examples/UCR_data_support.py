@@ -7,7 +7,15 @@ import pandas as pd
 DATA_DIR = "/Users/zoos/PycharmProjects/Anomaly_detection/data/"
 
 
-def compute_best_and_std(data_set, iter, data, signature_maha_knn, anomaly_level=0.001):
+def compute_best_and_std(
+    data_set,
+    iter,
+    data,
+    signature_maha_knn,
+    depth,
+    n_neighbours,
+    anomaly_level=0.001,
+):
     tnfn = {}
     for d in data_set:
         tnfn[d] = []
@@ -17,9 +25,23 @@ def compute_best_and_std(data_set, iter, data, signature_maha_knn, anomaly_level
                 data_set_name=d, random_state=random_state, anomaly_level=anomaly_level
             )
             # anomaly detection
-            signature_maha_knn.fit(data.corpus)
-            inlier_dists = signature_maha_knn.conformance(data.test_inlier)
-            outlier_dists = signature_maha_knn.conformance(data.test_outlier)
+            # Measure the time spent on fit
+            signature_maha_knn.fit(
+                knn_library="sklearn",
+                X_train=data.corpus,
+                signature_kwargs={
+                    "augmentation_list": ("addtime",),
+                    "depth": depth,
+                },
+            )
+
+            # Measure the time spent on conformance
+            inlier_dists = signature_maha_knn.conformance(
+                data.test_inlier, n_neighbors=n_neighbours
+            )
+            outlier_dists = signature_maha_knn.conformance(
+                data.test_outlier, n_neighbors=n_neighbours
+            )
 
             tnfn[d].append(compute_tn_fn_for_all_thres(inlier_dists, outlier_dists))
 
