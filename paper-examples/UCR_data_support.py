@@ -4,7 +4,7 @@ import matplotlib.lines as mlines
 import numpy as np
 import pandas as pd
 
-DATA_DIR = "/Users/zoos/PycharmProjects/Anomaly_detection/data/"
+DATA_DIR = "data/"
 
 
 def compute_best_and_std(
