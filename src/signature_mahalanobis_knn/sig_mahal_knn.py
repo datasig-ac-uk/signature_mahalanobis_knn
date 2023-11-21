@@ -169,6 +169,7 @@ class SignatureMahalanobisKNN:
         X_test: np.ndarray | None = None,
         signatures_test: np.ndarray | None = None,
         n_neighbors: int = 20,
+        debug=False,
     ) -> np.ndarray:
         """
         Compute the conformance scores for the data points either passed in
@@ -260,4 +261,7 @@ class SignatureMahalanobisKNN:
         candidate_distances[rho > self.mahal_distance.subspace_thres] = np.inf
 
         # compute the minimum of the candidate distances for each data point
-        return np.min(candidate_distances, axis=-1)
+        if debug:
+            return np.min(candidate_distances, axis=-1), train_indices
+        else:
+            return np.min(candidate_distances, axis=-1)
