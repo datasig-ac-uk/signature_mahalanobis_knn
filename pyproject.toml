@@ -29,7 +29,7 @@ classifiers = [
 ]
 dynamic = ["version"]
 dependencies = [
-  "sktime",
+  "sktime >= 0.24.1",
   "numpy",
   "scikit-learn",
   "pynndescent",
