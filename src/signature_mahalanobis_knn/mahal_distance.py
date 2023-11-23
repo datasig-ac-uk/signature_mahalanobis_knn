@@ -84,7 +84,7 @@ class Mahalanobis:
         x2 : np.ndarray
             One-dimensional array.
         Vt : np.ndarray
-            Two-dimensional arrat, truncated right singular matrix transposed of the corpus.
+            Two-dimensional array, truncated right singular matrix transposed of the corpus.
         S : np.ndarray
             One-dimensional array, truncated singular values of the corpus.
         subspace_thres : float

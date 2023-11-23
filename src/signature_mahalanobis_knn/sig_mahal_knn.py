@@ -16,6 +16,7 @@ class SignatureMahalanobisKNN:
     def __init__(
         self,
         n_jobs: int = 1,
+        random_state: int | None = None,
     ):
         """
         Parameters
@@ -23,12 +24,15 @@ class SignatureMahalanobisKNN:
         n_jobs : int, optional
             Parameter for joblib, number of parallel processors to use, by default 1.
             -1 means using all processors, -2 means using all processors but one.
+        random_state : int | None, optional
+            Random state for the knn library, by default None.
         """
         self.signature_transform: object | None = None
         self.n_jobs: int = n_jobs
         self.mahal_distance: Mahalanobis | None = None
         self.signatures_train: np.array | None = None
         self.knn: NearestNeighbors | NNDescent | None = None
+        self.random_state: int | None = random_state
 
     def fit(
         self,
@@ -160,6 +164,7 @@ class SignatureMahalanobisKNN:
                 data=self.mahal_distance.U,
                 metric="euclidean",
                 n_jobs=self.n_jobs,
+                random_state=self.random_state,
                 **kwargs,
             )
             self.knn = knn
@@ -263,5 +268,5 @@ class SignatureMahalanobisKNN:
         # compute the minimum of the candidate distances for each data point
         if debug:
             return np.min(candidate_distances, axis=-1), train_indices
-        else:
-            return np.min(candidate_distances, axis=-1)
+
+        return np.min(candidate_distances, axis=-1)
