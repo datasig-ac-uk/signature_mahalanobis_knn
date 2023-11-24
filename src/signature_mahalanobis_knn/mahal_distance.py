@@ -10,6 +10,7 @@ class Mahalanobis:
         subspace_thres: float = 1e-3,
         svd_thres: float = 1e-12,
         zero_thres: float = 1e-15,
+        default_dtype: np.dtype = np.float64,
     ):
         """
         After fit is called, becomes callable and intended to be used
@@ -40,7 +41,7 @@ class Mahalanobis:
         self.S: np.ndarray | None = None
         # numerical rank of the corpus
         self.numerical_rank: int | None = None
-        self.default_dtype = np.float32
+        self.default_dtype = default_dtype
 
     def fit(self, X: np.ndarray, y: None = None, **kwargs) -> None:  # noqa: ARG002
         """

@@ -81,13 +81,15 @@ class SignatureMahalanobisKNN:
                   (Active only if `window_name in ['sliding, 'expanding'].
                 - window_step: int, The step of the sliding/expanding window.
                   (Active only if `window_name in ['sliding, 'expanding'].
-                - rescaling: "pre" or "post",
+                - rescaling: str, "pre" or "post",
                     - "pre": rescale the path last signature term should
                       be roughly O(1)
                     - "post": Rescals the output signature by multiplying
                       the depth-d term by d!. Aim is that every term become ~O(1).
-                - sig_tfm: One of: ['signature', 'logsignature']).
+                - sig_tfm: str, One of: ['signature', 'logsignature']).
                 - depth: int, Signature truncation depth.
+                - backend: str, one of: `'esig'` (default), or `'iisignature'`.
+                  The backend to use for signature computation.
             By default, the following arguments are used:
                 - augmentation_list: ("addtime",)
                 - window_name: "global"
@@ -120,6 +122,7 @@ class SignatureMahalanobisKNN:
                 "rescaling": None,
                 "sig_tfm": "signature",
                 "depth": 2,
+                "backend": "esig",
             }
 
             if signature_kwargs is None:
