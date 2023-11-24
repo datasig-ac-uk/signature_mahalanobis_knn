@@ -177,7 +177,7 @@ class SignatureMahalanobisKNN:
         X_test: np.ndarray | None = None,
         signatures_test: np.ndarray | None = None,
         n_neighbors: int = 20,
-        debug=False,
+        return_indices: bool = False,
     ) -> np.ndarray:
         """
         Compute the conformance scores for the data points either passed in
@@ -199,6 +199,9 @@ class SignatureMahalanobisKNN:
         signatures_test : np.ndarray | None, optional
             Signatures of the data points, by default None.
             Two dimensional array of shape (n_samples, sig_dim).
+        return_indices : bool, optional
+            Whether to return the indices of the nearest neighbors,
+            by default False.
 
         Returns
         -------
@@ -269,7 +272,7 @@ class SignatureMahalanobisKNN:
         candidate_distances[rho > self.mahal_distance.subspace_thres] = np.inf
 
         # compute the minimum of the candidate distances for each data point
-        if debug:
+        if return_indices:
             return np.min(candidate_distances, axis=-1), train_indices
 
         return np.min(candidate_distances, axis=-1)
