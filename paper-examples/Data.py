@@ -1,8 +1,8 @@
 from __future__ import annotations
 
-import os
 import pickle
 import random
+from pathlib import Path
 
 import numpy as np
 import pandas as pd
@@ -65,9 +65,9 @@ class Data:
         """
         train_df = pd.read_pickle(DATA_DIR + "pen_digit_train.pkl")
         test_df = pd.read_pickle(DATA_DIR + "pen_digit_test.pkl")
-        self.corpus = train_df[train_df["Digit"] == digit]["Stream"].values
-        self.test_inlier = test_df[test_df["Digit"] == digit]["Stream"].values
-        self.test_outlier = test_df[test_df["Digit"] != digit]["Stream"].values
+        self.corpus = train_df[train_df["Digit"] == digit]["Stream"].to_numpy()
+        self.test_inlier = test_df[test_df["Digit"] == digit]["Stream"].to_numpy()
+        self.test_outlier = test_df[test_df["Digit"] != digit]["Stream"].to_numpy()
 
         if self.if_sample:
             self.sample()
@@ -116,9 +116,9 @@ class Data:
                     np.array(
                         list(
                             zip(
-                                data_frame.iloc[i].values[0],
-                                data_frame.iloc[i].values[1],
-                                data_frame.iloc[i].values[2],
+                                data_frame.iloc[i].to_numpy()[0],
+                                data_frame.iloc[i].to_numpy()[1],
+                                data_frame.iloc[i].to_numpy()[2],
                             )
                         )
                     )
@@ -134,11 +134,11 @@ class Data:
                 random_state=random_state,
             )
 
-        with open(DATA_DIR + "inlier_mmsis_train.pkl", "rb") as f:
+        with Path(DATA_DIR + "inlier_mmsis_train.pkl").open("rb") as f:
             inlier_mmsis_train = pickle.load(f)
-        with open(DATA_DIR + "inlier_mmsis_test.pkl", "rb") as f:
+        with Path(DATA_DIR + "inlier_mmsis_test.pkl").open("rb") as f:
             inlier_mmsis_test = pickle.load(f)
-        with open(DATA_DIR + "outlier_mmsis.pkl", "rb") as f:
+        with Path(DATA_DIR + "outlier_mmsis.pkl").open("rb") as f:
             outlier_mmsis = pickle.load(f)
 
         if thres_distance not in [4000, 8000, 16000, 32000]:
@@ -197,10 +197,10 @@ class Data:
             raise ValueError(msg, comparisons.index)
         DATASET_PATH = DATA_DIR + "Univariate_arff"
         datatrain = arff.loadarff(
-            os.path.join(DATASET_PATH, data_set_name, data_set_name + "_TRAIN.arff")
+            Path(DATASET_PATH) / data_set_name / (data_set_name + "_TRAIN.arff")
         )
         datatest = arff.loadarff(
-            os.path.join(DATASET_PATH, data_set_name, data_set_name + "_TEST.arff")
+            Path(DATASET_PATH) / data_set_name / (data_set_name + "_TEST.arff")
         )
         alldata = pd.concat(
             [pd.DataFrame(datatrain[0]), pd.DataFrame(datatest[0])], ignore_index=True
