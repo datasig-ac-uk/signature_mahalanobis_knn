@@ -150,16 +150,21 @@ class Data:
 
         self.corpus = process_data(
             sample_data(
-                ais_by_vessel_split_local.loc[inlier_mmsis_train], random_state=1
+                ais_by_vessel_split_local.loc[inlier_mmsis_train],
+                random_state=self.random_seed,
             )
         )
         self.test_inlier = process_data(
             sample_data(
-                ais_by_vessel_split_local.loc[inlier_mmsis_test], random_state=2
+                ais_by_vessel_split_local.loc[inlier_mmsis_test],
+                random_state=self.random_seed,
             )
         )
         self.test_outlier = process_data(
-            sample_data(ais_by_vessel_split_local.loc[outlier_mmsis], random_state=3)
+            sample_data(
+                ais_by_vessel_split_local.loc[outlier_mmsis],
+                random_state=self.random_seed,
+            )
         )
         if self.if_sample:
             self.sample()
