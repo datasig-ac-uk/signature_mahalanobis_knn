@@ -29,7 +29,7 @@ classifiers = [
 ]
 dynamic = ["version"]
 dependencies = [
-  "sktime",
+  "sktime >= 0.24.1",
   "numpy",
   "scikit-learn",
   "pynndescent",
@@ -38,6 +38,9 @@ dependencies = [
 ]
 
 [project.optional-dependencies]
+signatures = [
+  'esig; python_version < "3.10"',
+]
 test = [
   "pytest >=6",
   "pytest-cov >=3",

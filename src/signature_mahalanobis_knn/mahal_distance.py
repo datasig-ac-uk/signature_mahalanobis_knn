@@ -10,6 +10,7 @@ class Mahalanobis:
         subspace_thres: float = 1e-3,
         svd_thres: float = 1e-12,
         zero_thres: float = 1e-15,
+        default_dtype: np.dtype = np.float64,
     ):
         """
         After fit is called, becomes callable and intended to be used
@@ -40,7 +41,7 @@ class Mahalanobis:
         self.S: np.ndarray | None = None
         # numerical rank of the corpus
         self.numerical_rank: int | None = None
-        self.default_dtype = np.float32
+        self.default_dtype = default_dtype
 
     def fit(self, X: np.ndarray, y: None = None, **kwargs) -> None:  # noqa: ARG002
         """
@@ -57,9 +58,10 @@ class Mahalanobis:
         self.mu = np.mean(X, axis=0)
         X = X - self.mu
 
-        _, S, Vt = np.linalg.svd(X)
+        U, S, Vt = np.linalg.svd(X)
         k = np.sum(self.svd_thres <= S)  # detected numerical rank
         self.numerical_rank = k
+        self.U = U[:, :k].astype(self.default_dtype)
         self.Vt = Vt[:k].astype(self.default_dtype)
         self.S = S[:k].astype(self.default_dtype)
 
@@ -83,7 +85,7 @@ class Mahalanobis:
         x2 : np.ndarray
             One-dimensional array.
         Vt : np.ndarray
-            Two-dimensional arrat, truncated right singular matrix transposed of the corpus.
+            Two-dimensional array, truncated right singular matrix transposed of the corpus.
         S : np.ndarray
             One-dimensional array, truncated singular values of the corpus.
         subspace_thres : float
