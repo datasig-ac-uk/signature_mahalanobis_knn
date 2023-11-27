@@ -109,6 +109,37 @@ def bootstrap_auc_standard_error(
     return np.std(auc_values, ddof=1)
 
 
+def _replace_inf_with_max(
+    distances_in: np.ndarray,
+    distances_out: np.ndarray,
+) -> tuple[np.ndarray, np.ndarray]:
+    """
+    Replace infinity with twice the maximum value.
+    A workaround for the case when the maximum value is infinity.
+
+    Parameters
+    ----------
+    distances_in : np.ndarray
+        KNN distances for the inlier data points.
+    distances_out : np.ndarray
+        KNN distances for the outlier data points.
+
+    Returns
+    -------
+    tuple[np.ndarray, np.ndarray]
+        Tuple of the distances of inliers and outliers
+        with infinity replaced.
+    """
+    # replace infinity with twice of the maximum value, hacky, may need more thoughts
+    distances_in[distances_in == np.inf] = np.nan
+    distances_out[distances_out == np.inf] = np.nan
+    max_val = 2 * max(np.nanmax(distances_in), np.nanmax(distances_out))
+    distances_in = np.nan_to_num(distances_in, nan=max_val)
+    distances_out = np.nan_to_num(distances_out, nan=max_val)
+
+    return distances_in, distances_out
+
+
 def compute_auc_given_dists(
     distances_in: np.ndarray,
     distances_out: np.ndarray,
@@ -149,13 +180,8 @@ def compute_auc_given_dists(
         tuple of ROC AUC score and AUC standard error
         (if bootstrap is True).
     """
-    # replace infinity with twice of the maximum value, hacky, may need more thoughts
-    distances_in[distances_in == np.inf] = np.nan
-    distances_out[distances_out == np.inf] = np.nan
-    max_val = max(np.nanmax(distances_in), np.nanmax(distances_out))
-    two_times_max = 2 * max_val
-    distances_in = np.nan_to_num(distances_in, nan=two_times_max)
-    distances_out = np.nan_to_num(distances_out, nan=two_times_max)
+    # replace infinity with twice of the maximum value
+    distances_in, distances_out = _replace_inf_with_max(distances_in, distances_out)
 
     y_true = [0] * len(distances_in) + [1] * len(distances_out)
     y_score = np.concatenate([distances_in, distances_out])
@@ -303,6 +329,9 @@ def plot_cdf_given_dists(
         Title for the ROC curve plot, by default "".
         Only used when plot is True.
     """
+    # replace infinity with twice of the maximum value
+    distances_in, distances_out = _replace_inf_with_max(distances_in, distances_out)
+
     # obtain the empirical cumulative distribution functions
     sorted_inlier = np.sort(distances_in)
     cumulative_inliers = np.arange(1, len(sorted_inlier) + 1) / len(sorted_inlier)
