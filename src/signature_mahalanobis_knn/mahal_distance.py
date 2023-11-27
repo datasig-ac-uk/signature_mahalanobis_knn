@@ -1,7 +1,7 @@
 from __future__ import annotations
 
 import numpy as np
-from numba import jit
+from numba import njit
 
 
 class Mahalanobis:
@@ -10,6 +10,7 @@ class Mahalanobis:
         subspace_thres: float = 1e-3,
         svd_thres: float = 1e-12,
         zero_thres: float = 1e-15,
+        default_dtype: np.dtype = np.float64,
     ):
         """
         After fit is called, becomes callable and intended to be used
@@ -32,14 +33,15 @@ class Mahalanobis:
         self.zero_thres: float = zero_thres
 
         # set the following after fit() is called - None means not fitted yet
-        # truncated right singular matrix transposed of the corpus
-        self.Vt: np.ndarray | None = None
         # nean of the corpus
         self.mu: np.ndarray | None = None
+        # truncated right singular matrix transposed of the corpus
+        self.Vt: np.ndarray | None = None
         # truncated singular values of the corpus
         self.S: np.ndarray | None = None
         # numerical rank of the corpus
         self.numerical_rank: int | None = None
+        self.default_dtype = default_dtype
 
     def fit(self, X: np.ndarray, y: None = None, **kwargs) -> None:  # noqa: ARG002
         """
@@ -59,11 +61,12 @@ class Mahalanobis:
         U, S, Vt = np.linalg.svd(X)
         k = np.sum(self.svd_thres <= S)  # detected numerical rank
         self.numerical_rank = k
+        self.U = U[:, :k].astype(self.default_dtype)
         self.Vt = Vt[:k].astype(self.default_dtype)
         self.S = S[:k].astype(self.default_dtype)
 
     @staticmethod
-    @jit(nopython=True)  # Observe 6 times speed up on pen-digit dataset
+    @njit(fastmath=True)
     def calc_distance(
         x1: np.ndarray,
         x2: np.ndarray,
@@ -82,7 +85,7 @@ class Mahalanobis:
         x2 : np.ndarray
             One-dimensional array.
         Vt : np.ndarray
-            Two-dimensional arrat, truncated right singular matrix transposed of the corpus.
+            Two-dimensional array, truncated right singular matrix transposed of the corpus.
         S : np.ndarray
             One-dimensional array, truncated singular values of the corpus.
         subspace_thres : float
