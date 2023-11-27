@@ -10,7 +10,29 @@ def isolation_forest_scores(
     outlier_features: np.array,
     random_state: int = 0,
     **kwargs,
-):
+) -> tuple[np.array, np.array]:
+    """
+    Compute the Isolation Forest scores for inliers and outliers
+    given the features for the corpus.
+
+    Parameters
+    ----------
+    corpus_features : np.array
+        Two-dimensional array of shape (n_samples, n_features)
+    inlier_features : np.array
+        Two-dimensional array of shape (n_samples, n_features)
+    outlier_features : np.array
+        Two-dimensional array of shape (n_samples, n_features)
+    random_state : int, optional
+        Random seed, by default 0
+    **kwargs
+        Keyword arguments passed to the IsolationForest model
+
+    Returns
+    -------
+    tuple[np.array, np.array]
+        Isolation Forest scores for inliers and outliers
+    """
     # initalise IsolationForest model
     detector = IsolationForest(
         random_state=random_state,
@@ -34,6 +56,28 @@ def isolation_forest_based_on_moments(
     random_state: int = 0,
     **kwargs,
 ) -> tuple[np.array, np.array]:
+    """
+    Compute the Isolation Forest scores for inliers and outliers
+    given the streams for the corpus. The features are computed by
+    computing the mean and covariances of the streams.
+
+    Parameters
+    ----------
+    corpus_streams : np.array
+        Three-dimensional array of shape (batch, length, channels)
+    inlier_streams : np.array
+        Three-dimensional array of shape (batch, length, channels)
+    outlier_streams : np.array
+        Three-dimensional array of shape (batch, length, channels)
+    **kwargs
+        Keyword arguments passed to the IsolationForest model
+
+    Returns
+    -------
+    tuple[np.array, np.array]
+        Isolation Forest scores for inliers and outliers
+    """
+
     # obtain features by computing the mean and covariances
     def compute_moment_features(streams):
         features = []

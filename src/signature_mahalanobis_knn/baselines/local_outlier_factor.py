@@ -9,7 +9,27 @@ def local_outlier_factor_scores(
     inlier_features: np.array,
     outlier_features: np.array,
     **kwargs,
-):
+) -> tuple[np.array, np.array]:
+    """
+    Compute the Local Outlier Factor scores for inliers and outliers
+    given the features for the corpus.
+
+    Parameters
+    ----------
+    corpus_features : np.array
+        Two-dimensional array of shape (n_samples, n_features)
+    inlier_features : np.array
+        Two-dimensional array of shape (n_samples, n_features)
+    outlier_features : np.array
+        Two-dimensional array of shape (n_samples, n_features)
+    **kwargs
+        Keyword arguments passed to the LocalOutlierFactor model
+
+    Returns
+    -------
+    tuple[np.array, np.array]
+        Local Outlier Factor scores for inliers and outliers
+    """
     # initalise IsolationForest model
     detector = LocalOutlierFactor(
         **kwargs,
@@ -31,6 +51,28 @@ def local_outlier_factor_based_on_moments(
     outlier_streams: np.array,
     **kwargs,
 ) -> tuple[np.array, np.array]:
+    """
+    Compute the Local Outlier Factor scores for inliers and outliers
+    given the streams for the corpus. The features are computed by
+    computing the mean and covariances of the streams.
+
+    Parameters
+    ----------
+    corpus_streams : np.array
+        Three-dimensional array of shape (batch, length, channels)
+    inlier_streams : np.array
+        Three-dimensional array of shape (batch, length, channels)
+    outlier_streams : np.array
+        Three-dimensional array of shape (batch, length, channels)
+    **kwargs
+        Keyword arguments passed to the LocalOutlierFactor model
+
+    Returns
+    -------
+    tuple[np.array, np.array]
+        Local Outlier Factor scores for inliers and outliers
+    """
+
     # obtain features by computing the mean and covariances
     def compute_moment_features(streams):
         features = []
