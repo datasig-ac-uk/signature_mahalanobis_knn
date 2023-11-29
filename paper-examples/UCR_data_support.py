@@ -75,6 +75,15 @@ def plot_ucr_result(roughpathsbest, roughpathserror, anomaly_level, ax_num, axs)
         )
     )
 
+    # add column names
+    comparison_table.columns = [
+        "dataset",
+        "conformance",
+        "conformance standard deviation",
+        "ADSL",
+        "ADSL standard deviation",
+    ]
+
     # plotting
     fontsize = 15
     ax = axs.flatten()[ax_num]
