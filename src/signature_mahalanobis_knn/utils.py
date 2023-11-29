@@ -45,7 +45,7 @@ def plot_roc_curve(
         fp_rate,
         tp_rate,
         color="magenta",
-        label=f"AUC = {round(roc_auc, 2)}",
+        label=f"AUC = {round(roc_auc, 3)}",
         linewidth=2,
     )
     plt.legend(loc="lower right")

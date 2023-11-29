@@ -7,7 +7,6 @@ from pathlib import Path
 import numpy as np
 import pandas as pd
 import requests
-import sklearn
 from scipy.io import arff
 from sklearn.model_selection import train_test_split
 
@@ -39,10 +38,23 @@ def get_corpus_and_outlier_paths(df, desired_class):
     return corpus_paths, outlier_paths
 
 
-def normalise(streams):
-    return [
-        sklearn.preprocessing.MinMaxScaler().fit_transform(stream) for stream in streams
-    ]
+def normalise(streams, minimum=None, maximum=None):
+    if minimum is None and maximum is None:
+        streams_stacked = np.vstack(streams)
+        minimum = np.min(streams_stacked, axis=0)
+        maximum = np.max(streams_stacked, axis=0)
+
+    streams = [(stream - minimum) / (maximum - minimum) for stream in streams]
+
+    return streams, minimum, maximum
+
+
+def normalise_data(corpus, inliers, outliers):
+    corpus, minimum, maximum = normalise(corpus)
+    inliers, *_ = normalise(inliers, minimum, maximum)
+    outliers, *_ = normalise(outliers, minimum, maximum)
+
+    return corpus, inliers, outliers
 
 
 class Data:
@@ -80,8 +92,10 @@ class Data:
 
         if self.if_sample:
             self.sample()
-        self.corpus, self.test_inlier, self.test_outlier = map(
-            normalise, (self.corpus, self.test_inlier, self.test_outlier)
+        self.corpus, self.test_inlier, self.test_outlier = normalise_data(
+            corpus=self.corpus,
+            inliers=self.test_inlier,
+            outliers=self.test_outlier,
         )
 
     def load_language_data(self):
@@ -101,8 +115,10 @@ class Data:
         self.test_outlier = paths_test[labels_test == 1]
         if self.if_sample:
             self.sample()
-        self.corpus, self.test_inlier, self.test_outlier = map(
-            normalise, (self.corpus, self.test_inlier, self.test_outlier)
+        self.corpus, self.test_inlier, self.test_outlier = normalise_data(
+            corpus=self.corpus,
+            inliers=self.test_inlier,
+            outliers=self.test_outlier,
         )
 
     def load_ship_movements(
@@ -145,9 +161,9 @@ class Data:
         # process data in a format where it could be indexed.
         def process_data(
             data_frame,
-            include_time_diffs=False,
-            lead_lag_transform=False,
-            invisibility_transform=False,
+            include_time_diffs,
+            lead_lag_transform,
+            invisibility_transform,
         ):
             return [
                 get_stream(
@@ -211,8 +227,10 @@ class Data:
         )
         if self.if_sample:
             self.sample()
-        self.corpus, self.test_inlier, self.test_outlier = map(
-            normalise, (self.corpus, self.test_inlier, self.test_outlier)
+        self.corpus, self.test_inlier, self.test_outlier = normalise_data(
+            corpus=self.corpus,
+            inliers=self.test_inlier,
+            outliers=self.test_outlier,
         )
 
     def load_ucr_dataset(
@@ -273,6 +291,8 @@ class Data:
         self.test_outlier = outlier_paths
         if self.if_sample:
             self.sample()
-        self.corpus, self.test_inlier, self.test_outlier = map(
-            normalise, (self.corpus, self.test_inlier, self.test_outlier)
+        self.corpus, self.test_inlier, self.test_outlier = normalise_data(
+            corpus=self.corpus,
+            inliers=self.test_inlier,
+            outliers=self.test_outlier,
         )
