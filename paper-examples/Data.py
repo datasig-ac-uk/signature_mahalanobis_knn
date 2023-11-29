@@ -6,11 +6,20 @@ from pathlib import Path
 
 import numpy as np
 import pandas as pd
+import requests
 import sklearn
 from scipy.io import arff
 from sklearn.model_selection import train_test_split
 
 DATA_DIR = "data/"
+
+
+def download(source_url, target_filename, chunk_size=1024):
+    response = requests.get(source_url, stream=True)
+
+    with Path(target_filename).open("wb") as handle:
+        for data in response.iter_content(chunk_size=chunk_size):
+            handle.write(data)
 
 
 def get_corpus_and_outlier_paths(df, desired_class):
@@ -96,7 +105,14 @@ class Data:
             normalise, (self.corpus, self.test_inlier, self.test_outlier)
         )
 
-    def load_ship_movements(self, thres_distance=32000, n_samples=5000):
+    def load_ship_movements(
+        self,
+        include_time_diffs,
+        lead_lag_transform,
+        invisibility_transform,
+        thres_distance=32000,
+        n_samples=5000,
+    ):
         """
 
         :param thres_distance: Must be one of [4000, 8000, 16000, 32000]
@@ -104,26 +120,44 @@ class Data:
         :return:
         """
 
-        # process data in a format where it could be indexed.
-        def process_data(data_frame):
-            data_frame["TimeDiff"] = data_frame["BaseDateTime"].apply(
-                lambda x: np.append(0, np.diff(x))
-            )
-            data_frame = data_frame[["LAT", "LON", "TimeDiff"]]
-            res = []
-            for i in range(len(data_frame)):
-                res.append(
-                    np.array(
-                        list(
-                            zip(
-                                data_frame.iloc[i].to_numpy()[0],
-                                data_frame.iloc[i].to_numpy()[1],
-                                data_frame.iloc[i].to_numpy()[2],
-                            )
-                        )
-                    )
+        def get_stream(
+            vessel, include_time_diffs, lead_lag_transform, invisibility_transform
+        ):
+            stream = np.column_stack((vessel["LAT"], vessel["LON"]))
+
+            if include_time_diffs:
+                stream = np.column_stack(
+                    (stream, np.append(0, np.diff(vessel["BaseDateTime"])))
                 )
-            return res
+
+            if lead_lag_transform:
+                stream = np.repeat(stream, 2, axis=0)
+                stream = np.column_stack((stream[1:, :], stream[:-1, :]))
+
+            if invisibility_transform:
+                stream = np.vstack((stream, stream[-1], np.zeros_like(stream[-1])))
+                stream = np.column_stack(
+                    (stream, np.append(np.ones(stream.shape[0] - 2), [0, 0]))
+                )
+
+            return stream
+
+        # process data in a format where it could be indexed.
+        def process_data(
+            data_frame,
+            include_time_diffs=False,
+            lead_lag_transform=False,
+            invisibility_transform=False,
+        ):
+            return [
+                get_stream(
+                    vessel=vessel,
+                    include_time_diffs=include_time_diffs,
+                    lead_lag_transform=lead_lag_transform,
+                    invisibility_transform=invisibility_transform,
+                )
+                for _, vessel in data_frame.iterrows()
+            ]
 
         # subsample data
         def sample_data(ais_by_vessel_split, random_state):
@@ -149,22 +183,31 @@ class Data:
         )
 
         self.corpus = process_data(
-            sample_data(
+            data_frame=sample_data(
                 ais_by_vessel_split_local.loc[inlier_mmsis_train],
-                random_state=self.random_seed,
-            )
+                random_state=1,
+            ),
+            include_time_diffs=include_time_diffs,
+            lead_lag_transform=lead_lag_transform,
+            invisibility_transform=invisibility_transform,
         )
         self.test_inlier = process_data(
-            sample_data(
+            data_frame=sample_data(
                 ais_by_vessel_split_local.loc[inlier_mmsis_test],
-                random_state=self.random_seed,
-            )
+                random_state=2,
+            ),
+            include_time_diffs=include_time_diffs,
+            lead_lag_transform=lead_lag_transform,
+            invisibility_transform=invisibility_transform,
         )
         self.test_outlier = process_data(
-            sample_data(
+            data_frame=sample_data(
                 ais_by_vessel_split_local.loc[outlier_mmsis],
-                random_state=self.random_seed,
-            )
+                random_state=3,
+            ),
+            include_time_diffs=include_time_diffs,
+            lead_lag_transform=lead_lag_transform,
+            invisibility_transform=invisibility_transform,
         )
         if self.if_sample:
             self.sample()
