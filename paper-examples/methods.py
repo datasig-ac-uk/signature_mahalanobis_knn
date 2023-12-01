@@ -23,6 +23,7 @@ def compute_signature_mahalanbois_knn_scores(
     depth: int,
     n_neighbours: int,
     random_state: int,
+    backend: str = "esig",
 ) -> dict[str, np.array | float]:
     signature_maha_knn = SignatureMahalanobisKNN(n_jobs=-1, random_state=random_state)
 
@@ -34,6 +35,7 @@ def compute_signature_mahalanbois_knn_scores(
         signature_kwargs={
             "augmentation_list": None,
             "depth": depth,
+            "backend": backend,
         },
     )
     fit_time = time.time() - start_time
@@ -77,6 +79,7 @@ def compute_isolation_forest_scores_signatures(
     data: Data.Data,
     depth: int,
     random_state: int,
+    backend: str = "esig",
     **kwargs,
 ) -> dict[str, np.array | float]:
     # compute signatures for corpus, inlier and outlier
@@ -86,6 +89,7 @@ def compute_isolation_forest_scores_signatures(
         signature_kwargs={
             "augmentation_list": None,
             "depth": depth,
+            "backend": backend,
         },
     )
     inlier_signatures = compute_signatures(
@@ -94,6 +98,7 @@ def compute_isolation_forest_scores_signatures(
         signature_kwargs={
             "augmentation_list": None,
             "depth": depth,
+            "backend": backend,
         },
     )
     outlier_signatures = compute_signatures(
@@ -102,6 +107,7 @@ def compute_isolation_forest_scores_signatures(
         signature_kwargs={
             "augmentation_list": None,
             "depth": depth,
+            "backend": backend,
         },
     )
 
@@ -131,6 +137,7 @@ def compute_local_outlier_factor_scores_based_on_moments(
 def compute_local_outlier_factor_scores_signatures(
     data: Data.Data,
     depth: int,
+    backend: str = "esig",
     **kwargs,
 ) -> dict[str, np.array | float]:
     # compute signatures for corpus, inlier and outlier
@@ -140,6 +147,7 @@ def compute_local_outlier_factor_scores_signatures(
         signature_kwargs={
             "augmentation_list": None,
             "depth": depth,
+            "backend": backend,
         },
     )
     inlier_signatures = compute_signatures(
@@ -148,6 +156,7 @@ def compute_local_outlier_factor_scores_signatures(
         signature_kwargs={
             "augmentation_list": None,
             "depth": depth,
+            "backend": backend,
         },
     )
     outlier_signatures = compute_signatures(
@@ -156,6 +165,7 @@ def compute_local_outlier_factor_scores_signatures(
         signature_kwargs={
             "augmentation_list": None,
             "depth": depth,
+            "backend": backend,
         },
     )
 

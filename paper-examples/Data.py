@@ -98,21 +98,23 @@ class Data:
             outliers=self.test_outlier,
         )
 
-    def load_language_data(self):
+    def load_language_data(self, with_prefix):
         """
-        Load language data set with English and German words.
+        Load language data set with English and non-English words.
         :return: None
         """
-        paths = np.load(DATA_DIR + "paths_en_de.npy")
-        labels = np.load(DATA_DIR + "labels_en_de.npy")
-        (paths_train, paths_test, labels_train, labels_test) = train_test_split(
-            paths, labels, random_state=1, test_size=0.2
-        )
-        paths_train = paths_train[labels_train == 0]
+        if with_prefix:
+            corpus_file = DATA_DIR + "english_word_one_hot_paths_with_prefix.npy"
+            test_inlier_file = DATA_DIR + "inlier_one_hot_paths_with_prefix.npy"
+            test_outlier_file = DATA_DIR + "outlier_one_hot_paths_with_prefix.npy"
+        else:
+            corpus_file = DATA_DIR + "english_word_one_hot_paths.npy"
+            test_inlier_file = DATA_DIR + "inlier_one_hot_paths.npy"
+            test_outlier_file = DATA_DIR + "outlier_one_hot_paths.npy"
 
-        self.corpus = paths_train
-        self.test_inlier = paths_test[labels_test == 0]
-        self.test_outlier = paths_test[labels_test == 1]
+        self.corpus = np.load(corpus_file)
+        self.test_inlier = np.load(test_inlier_file)
+        self.test_outlier = np.load(test_outlier_file)
         if self.if_sample:
             self.sample()
         self.corpus, self.test_inlier, self.test_outlier = normalise_data(
