@@ -5,6 +5,8 @@ import time
 import numpy as np
 from sklearn.neighbors import LocalOutlierFactor
 
+from signature_mahalanobis_knn.baselines.utils import compute_moment_features
+
 
 def local_outlier_factor_scores(
     corpus_features: np.array,
@@ -111,17 +113,6 @@ def local_outlier_factor_based_on_moments(
             - "fit_time": float
             - "compute_score_time": float
     """
-
-    # obtain features by computing the mean and covariances
-    def compute_moment_features(streams):
-        features = []
-        for stream in streams:
-            mean = np.mean(stream, axis=0)
-            cov = np.cov(stream, rowvar=False)[np.triu_indices(len(mean))]
-            features.append(np.append(mean, np.ravel(cov)))
-
-        return np.array(features)
-
     # compute features for corpus, inliers and outliers
     corpus_features, inlier_features, outlier_features = map(
         compute_moment_features,

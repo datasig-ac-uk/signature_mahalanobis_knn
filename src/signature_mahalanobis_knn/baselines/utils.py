@@ -8,6 +8,31 @@ from sktime.transformations.panel.signature_based import (
 )
 
 
+def compute_moment_features(streams: np.array | list[np.array]) -> np.array:
+    """
+    For each stream in streams, compute the mean and covariances (upper triangle)
+    of the stream and concatenate them into a single feature vector.
+
+    Parameters
+    ----------
+    streams : np.array
+        Array of streams, with shape (batch, length, channels),
+        or a list of arrays of shape (length, channels).
+
+    Returns
+    -------
+    np.array
+        Array of features, with shape (samples, features).
+    """
+    features = []
+    for stream in streams:
+        mean = np.mean(stream, axis=0)
+        cov = np.cov(stream, rowvar=False)[np.triu_indices(len(mean))]
+        features.append(np.concatenate((mean, cov)))
+
+    return np.array(features)
+
+
 def compute_signatures(
     X: np.array,
     n_jobs: int = 1,
