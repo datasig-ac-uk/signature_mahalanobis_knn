@@ -9,6 +9,7 @@ import pandas as pd
 import requests
 from scipy.io import arff
 from sklearn.model_selection import train_test_split
+from tqdm import tqdm
 
 DATA_DIR = "data/"
 
@@ -62,7 +63,7 @@ class Data:
     Hold time-series data and allow augmentations
     """
 
-    def __init__(self, if_sample=True, n_samples=(800, 10, 10), random_seed=1):
+    def __init__(self, if_sample=False, n_samples=(800, 10, 10), random_seed=1):
         self.corpus = (
             None  # unlabelled corpus consists of streams, numpy.array(numpy.array)
         )
@@ -98,23 +99,82 @@ class Data:
             outliers=self.test_outlier,
         )
 
-    def load_language_data(self, with_prefix):
+    def load_language_data(self, cumsum, with_prefix):
         """
         Load language data set with English and non-English words.
         :return: None
         """
-        if with_prefix:
-            corpus_file = DATA_DIR + "english_word_one_hot_paths_with_prefix.npy"
-            test_inlier_file = DATA_DIR + "inlier_one_hot_paths_with_prefix.npy"
-            test_outlier_file = DATA_DIR + "outlier_one_hot_paths_with_prefix.npy"
-        else:
-            corpus_file = DATA_DIR + "english_word_one_hot_paths.npy"
-            test_inlier_file = DATA_DIR + "inlier_one_hot_paths.npy"
-            test_outlier_file = DATA_DIR + "outlier_one_hot_paths.npy"
 
-        self.corpus = np.load(corpus_file)
-        self.test_inlier = np.load(test_inlier_file)
-        self.test_outlier = np.load(test_outlier_file)
+        def construct_path(char_seq: str | list[str], alpha_len: int = 26) -> np.array:
+            # construct path via one-hot encoding of characters
+            n = len(char_seq)
+            its = np.zeros(n, np.int64)
+            for i in range(n):
+                its[i] = ord(char_seq[i]) - 97
+            A = np.zeros((n, alpha_len))
+            j = 0
+            for i in its:
+                A[j, i] += 1
+                j += 1
+
+            return A
+
+        def get_one_hot_paths_from_words(
+            words: list[str],
+            cumsum_transform: bool = True,
+            alpha_len: int = 26,
+        ) -> list[np.array]:
+            # construct paths from words and optionally apply cumsum transform
+            if cumsum_transform:
+                return [
+                    np.cumsum(
+                        construct_path(char_seq=word, alpha_len=alpha_len), axis=0
+                    )
+                    for word in tqdm(words)
+                ]
+
+            return [
+                construct_path(char_seq=word, alpha_len=alpha_len)
+                for word in tqdm(words)
+            ]
+
+        # load in data frames
+        english_train_pickle_file = DATA_DIR + "english_train.pkl"
+        corpus_sample_pickle_file = DATA_DIR + "corpus_sample.pkl"
+        english_train = pd.read_pickle(english_train_pickle_file)
+        corpus_sample_df = pd.read_pickle(corpus_sample_pickle_file)
+
+        if with_prefix:
+            # concatenate a prefix to each word
+            prefix_str = "concatenatedprefix"
+            english_words = [f"{prefix_str}{word}" for word in english_train["word"]]
+            corpus_words = [f"{prefix_str}{word}" for word in corpus_sample_df["word"]]
+        else:
+            english_words = english_train["word"]
+            corpus_words = corpus_sample_df["word"]
+
+        # obtain one-hot paths from words
+        self.corpus = get_one_hot_paths_from_words(
+            words=english_words,
+            cumsum_transform=cumsum,
+        )
+        test_paths = get_one_hot_paths_from_words(
+            words=corpus_words,
+            cumsum_transform=cumsum,
+        )
+
+        # obtain indices of english and non-english words
+        english_word_indices = corpus_sample_df[
+            corpus_sample_df["language"] == "en"
+        ].index.tolist()
+        non_english_word_indices = corpus_sample_df[
+            corpus_sample_df["language"] != "en"
+        ].index.tolist()
+
+        # split test paths into inliers and outliers
+        self.test_inlier = [test_paths[i] for i in english_word_indices]
+        self.test_outlier = [test_paths[i] for i in non_english_word_indices]
+
         if self.if_sample:
             self.sample()
         self.corpus, self.test_inlier, self.test_outlier = normalise_data(
