@@ -31,6 +31,7 @@ dynamic = ["version"]
 dependencies = [
   "sktime >= 0.24.1",
   "numpy",
+  "pandas",
   "scikit-learn",
   "pynndescent",
   "matplotlib",
