@@ -24,8 +24,11 @@ def compute_signature_mahalanbois_knn_scores(
     n_neighbours: int,
     random_state: int,
     backend: str = "esig",
+    n_jobs: int = -1,
 ) -> dict[str, np.array | float]:
-    signature_maha_knn = SignatureMahalanobisKNN(n_jobs=-1, random_state=random_state)
+    signature_maha_knn = SignatureMahalanobisKNN(
+        n_jobs=n_jobs, random_state=random_state
+    )
 
     # measure the time spent on fit
     start_time = time.time()
@@ -80,12 +83,13 @@ def compute_isolation_forest_scores_signatures(
     depth: int,
     random_state: int,
     backend: str = "esig",
+    n_jobs: int = -1,
     **kwargs,
 ) -> dict[str, np.array | float]:
     # compute signatures for corpus, inlier and outlier
     corpus_signatures = compute_signatures(
         X=data.corpus,
-        n_jobs=-1,
+        n_jobs=n_jobs,
         signature_kwargs={
             "augmentation_list": None,
             "depth": depth,
@@ -94,7 +98,7 @@ def compute_isolation_forest_scores_signatures(
     )
     inlier_signatures = compute_signatures(
         X=data.test_inlier,
-        n_jobs=-1,
+        n_jobs=n_jobs,
         signature_kwargs={
             "augmentation_list": None,
             "depth": depth,
@@ -103,7 +107,7 @@ def compute_isolation_forest_scores_signatures(
     )
     outlier_signatures = compute_signatures(
         X=data.test_outlier,
-        n_jobs=-1,
+        n_jobs=n_jobs,
         signature_kwargs={
             "augmentation_list": None,
             "depth": depth,
@@ -138,12 +142,13 @@ def compute_local_outlier_factor_scores_signatures(
     data: Data.Data,
     depth: int,
     backend: str = "esig",
+    n_jobs: int = -1,
     **kwargs,
 ) -> dict[str, np.array | float]:
     # compute signatures for corpus, inlier and outlier
     corpus_signatures = compute_signatures(
         X=data.corpus,
-        n_jobs=-1,
+        n_jobs=n_jobs,
         signature_kwargs={
             "augmentation_list": None,
             "depth": depth,
@@ -152,7 +157,7 @@ def compute_local_outlier_factor_scores_signatures(
     )
     inlier_signatures = compute_signatures(
         X=data.test_inlier,
-        n_jobs=-1,
+        n_jobs=n_jobs,
         signature_kwargs={
             "augmentation_list": None,
             "depth": depth,
@@ -161,7 +166,7 @@ def compute_local_outlier_factor_scores_signatures(
     )
     outlier_signatures = compute_signatures(
         X=data.test_outlier,
-        n_jobs=-1,
+        n_jobs=n_jobs,
         signature_kwargs={
             "augmentation_list": None,
             "depth": depth,
