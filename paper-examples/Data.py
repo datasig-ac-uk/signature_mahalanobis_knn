@@ -6,11 +6,20 @@ from pathlib import Path
 
 import numpy as np
 import pandas as pd
-import sklearn
+import requests
 from scipy.io import arff
 from sklearn.model_selection import train_test_split
+from tqdm import tqdm
 
 DATA_DIR = "data/"
+
+
+def download(source_url, target_filename, chunk_size=1024):
+    response = requests.get(source_url, stream=True)
+
+    with Path(target_filename).open("wb") as handle:
+        for data in response.iter_content(chunk_size=chunk_size):
+            handle.write(data)
 
 
 def get_corpus_and_outlier_paths(df, desired_class):
@@ -30,10 +39,23 @@ def get_corpus_and_outlier_paths(df, desired_class):
     return corpus_paths, outlier_paths
 
 
-def normalise(streams):
-    return [
-        sklearn.preprocessing.MinMaxScaler().fit_transform(stream) for stream in streams
-    ]
+def normalise(streams, minimum=None, maximum=None):
+    if minimum is None and maximum is None:
+        streams_stacked = np.vstack(streams)
+        minimum = np.min(streams_stacked, axis=0)
+        maximum = np.max(streams_stacked, axis=0)
+
+    streams = [(stream - minimum) / (maximum - minimum) for stream in streams]
+
+    return streams, minimum, maximum
+
+
+def normalise_data(corpus, inliers, outliers):
+    corpus, minimum, maximum = normalise(corpus)
+    inliers, *_ = normalise(inliers, minimum, maximum)
+    outliers, *_ = normalise(outliers, minimum, maximum)
+
+    return corpus, inliers, outliers
 
 
 class Data:
@@ -41,7 +63,7 @@ class Data:
     Hold time-series data and allow augmentations
     """
 
-    def __init__(self, if_sample=True, n_samples=(800, 10, 10), random_seed=1):
+    def __init__(self, if_sample=False, n_samples=(800, 10, 10), random_seed=1):
         self.corpus = (
             None  # unlabelled corpus consists of streams, numpy.array(numpy.array)
         )
@@ -71,32 +93,104 @@ class Data:
 
         if self.if_sample:
             self.sample()
-        self.corpus, self.test_inlier, self.test_outlier = map(
-            normalise, (self.corpus, self.test_inlier, self.test_outlier)
+        self.corpus, self.test_inlier, self.test_outlier = normalise_data(
+            corpus=self.corpus,
+            inliers=self.test_inlier,
+            outliers=self.test_outlier,
         )
 
-    def load_language_data(self):
+    def load_language_data(self, cumsum, with_prefix):
         """
-        Load language data set with English and German words.
+        Load language data set with English and non-English words.
         :return: None
         """
-        paths = np.load(DATA_DIR + "paths_en_de.npy")
-        labels = np.load(DATA_DIR + "labels_en_de.npy")
-        (paths_train, paths_test, labels_train, labels_test) = train_test_split(
-            paths, labels, random_state=1, test_size=0.2
-        )
-        paths_train = paths_train[labels_train == 0]
 
-        self.corpus = paths_train
-        self.test_inlier = paths_test[labels_test == 0]
-        self.test_outlier = paths_test[labels_test == 1]
+        def construct_path(char_seq: str | list[str], alpha_len: int = 26) -> np.array:
+            # construct path via one-hot encoding of characters
+            n = len(char_seq)
+            its = np.zeros(n, np.int64)
+            for i in range(n):
+                its[i] = ord(char_seq[i]) - 97
+            A = np.zeros((n, alpha_len))
+            j = 0
+            for i in its:
+                A[j, i] += 1
+                j += 1
+
+            return A
+
+        def get_one_hot_paths_from_words(
+            words: list[str],
+            cumsum_transform: bool = True,
+            alpha_len: int = 26,
+        ) -> list[np.array]:
+            # construct paths from words and optionally apply cumsum transform
+            if cumsum_transform:
+                return [
+                    np.cumsum(
+                        construct_path(char_seq=word, alpha_len=alpha_len), axis=0
+                    )
+                    for word in tqdm(words)
+                ]
+
+            return [
+                construct_path(char_seq=word, alpha_len=alpha_len)
+                for word in tqdm(words)
+            ]
+
+        # load in data frames
+        english_train_pickle_file = DATA_DIR + "english_train.pkl"
+        corpus_sample_pickle_file = DATA_DIR + "corpus_sample.pkl"
+        english_train = pd.read_pickle(english_train_pickle_file)
+        corpus_sample_df = pd.read_pickle(corpus_sample_pickle_file)
+
+        if with_prefix:
+            # concatenate a prefix to each word
+            prefix_str = "concatenatedprefix"
+            english_words = [f"{prefix_str}{word}" for word in english_train["word"]]
+            corpus_words = [f"{prefix_str}{word}" for word in corpus_sample_df["word"]]
+        else:
+            english_words = english_train["word"]
+            corpus_words = corpus_sample_df["word"]
+
+        # obtain one-hot paths from words
+        self.corpus = get_one_hot_paths_from_words(
+            words=english_words,
+            cumsum_transform=cumsum,
+        )
+        test_paths = get_one_hot_paths_from_words(
+            words=corpus_words,
+            cumsum_transform=cumsum,
+        )
+
+        # obtain indices of english and non-english words
+        english_word_indices = corpus_sample_df[
+            corpus_sample_df["language"] == "en"
+        ].index.tolist()
+        non_english_word_indices = corpus_sample_df[
+            corpus_sample_df["language"] != "en"
+        ].index.tolist()
+
+        # split test paths into inliers and outliers
+        self.test_inlier = [test_paths[i] for i in english_word_indices]
+        self.test_outlier = [test_paths[i] for i in non_english_word_indices]
+
         if self.if_sample:
             self.sample()
-        self.corpus, self.test_inlier, self.test_outlier = map(
-            normalise, (self.corpus, self.test_inlier, self.test_outlier)
+        self.corpus, self.test_inlier, self.test_outlier = normalise_data(
+            corpus=self.corpus,
+            inliers=self.test_inlier,
+            outliers=self.test_outlier,
         )
 
-    def load_ship_movements(self, thres_distance=32000, n_samples=5000):
+    def load_ship_movements(
+        self,
+        include_time_diffs,
+        lead_lag_transform,
+        invisibility_transform,
+        thres_distance=32000,
+        n_samples=5000,
+    ):
         """
 
         :param thres_distance: Must be one of [4000, 8000, 16000, 32000]
@@ -104,26 +198,44 @@ class Data:
         :return:
         """
 
-        # process data in a format where it could be indexed.
-        def process_data(data_frame):
-            data_frame["TimeDiff"] = data_frame["BaseDateTime"].apply(
-                lambda x: np.append(0, np.diff(x))
-            )
-            data_frame = data_frame[["LAT", "LON", "TimeDiff"]]
-            res = []
-            for i in range(len(data_frame)):
-                res.append(
-                    np.array(
-                        list(
-                            zip(
-                                data_frame.iloc[i].to_numpy()[0],
-                                data_frame.iloc[i].to_numpy()[1],
-                                data_frame.iloc[i].to_numpy()[2],
-                            )
-                        )
-                    )
+        def get_stream(
+            vessel, include_time_diffs, lead_lag_transform, invisibility_transform
+        ):
+            stream = np.column_stack((vessel["LAT"], vessel["LON"]))
+
+            if include_time_diffs:
+                stream = np.column_stack(
+                    (stream, np.append(0, np.diff(vessel["BaseDateTime"])))
                 )
-            return res
+
+            if lead_lag_transform:
+                stream = np.repeat(stream, 2, axis=0)
+                stream = np.column_stack((stream[1:, :], stream[:-1, :]))
+
+            if invisibility_transform:
+                stream = np.vstack((stream, stream[-1], np.zeros_like(stream[-1])))
+                stream = np.column_stack(
+                    (stream, np.append(np.ones(stream.shape[0] - 2), [0, 0]))
+                )
+
+            return stream
+
+        # process data in a format where it could be indexed.
+        def process_data(
+            data_frame,
+            include_time_diffs,
+            lead_lag_transform,
+            invisibility_transform,
+        ):
+            return [
+                get_stream(
+                    vessel=vessel,
+                    include_time_diffs=include_time_diffs,
+                    lead_lag_transform=lead_lag_transform,
+                    invisibility_transform=invisibility_transform,
+                )
+                for _, vessel in data_frame.iterrows()
+            ]
 
         # subsample data
         def sample_data(ais_by_vessel_split, random_state):
@@ -149,27 +261,38 @@ class Data:
         )
 
         self.corpus = process_data(
-            sample_data(
+            data_frame=sample_data(
                 ais_by_vessel_split_local.loc[inlier_mmsis_train],
-                random_state=self.random_seed,
-            )
+                random_state=1,
+            ),
+            include_time_diffs=include_time_diffs,
+            lead_lag_transform=lead_lag_transform,
+            invisibility_transform=invisibility_transform,
         )
         self.test_inlier = process_data(
-            sample_data(
+            data_frame=sample_data(
                 ais_by_vessel_split_local.loc[inlier_mmsis_test],
-                random_state=self.random_seed,
-            )
+                random_state=2,
+            ),
+            include_time_diffs=include_time_diffs,
+            lead_lag_transform=lead_lag_transform,
+            invisibility_transform=invisibility_transform,
         )
         self.test_outlier = process_data(
-            sample_data(
+            data_frame=sample_data(
                 ais_by_vessel_split_local.loc[outlier_mmsis],
-                random_state=self.random_seed,
-            )
+                random_state=3,
+            ),
+            include_time_diffs=include_time_diffs,
+            lead_lag_transform=lead_lag_transform,
+            invisibility_transform=invisibility_transform,
         )
         if self.if_sample:
             self.sample()
-        self.corpus, self.test_inlier, self.test_outlier = map(
-            normalise, (self.corpus, self.test_inlier, self.test_outlier)
+        self.corpus, self.test_inlier, self.test_outlier = normalise_data(
+            corpus=self.corpus,
+            inliers=self.test_inlier,
+            outliers=self.test_outlier,
         )
 
     def load_ucr_dataset(
@@ -230,6 +353,8 @@ class Data:
         self.test_outlier = outlier_paths
         if self.if_sample:
             self.sample()
-        self.corpus, self.test_inlier, self.test_outlier = map(
-            normalise, (self.corpus, self.test_inlier, self.test_outlier)
+        self.corpus, self.test_inlier, self.test_outlier = normalise_data(
+            corpus=self.corpus,
+            inliers=self.test_inlier,
+            outliers=self.test_outlier,
         )

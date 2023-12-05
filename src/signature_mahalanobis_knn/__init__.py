@@ -7,7 +7,7 @@ signature_mahalanobis_knn: Using Nearest Neighbour-Variance Norm with Path Signa
 
 from __future__ import annotations
 
-__version__ = "0.0.3"
+__version__ = "0.1.0"
 
 from .mahal_distance import Mahalanobis
 from .sig_mahal_knn import SignatureMahalanobisKNN

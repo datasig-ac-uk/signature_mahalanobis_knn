@@ -157,4 +157,6 @@ Thumbs.db
 *~
 *.swp
 
+# miscellanous
 .DS_Store
+paper-examples/data

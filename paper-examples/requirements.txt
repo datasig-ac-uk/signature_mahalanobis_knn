@@ -1,0 +1,7 @@
+esig
+iisignature
+ipykernel
+jupyter
+requests
+signature_mahalanobis_knn==0.1.0
+tqdm
