@@ -31,16 +31,16 @@ Prior to running this experiment notebook, you will need to run the
 [ship_movement_anomalies_data.ipynb](ship_movement_anomalies_data.ipynb)
 notebook to download and pre-process the data.
 
-## [Univariate time series: ucr_dataset_comparison.ipynb](ucr_dataset_comparison.ipynb)
+## [Univariate time series: ucr_anomalies.ipynb](ucr_anomalies.ipynb)
 
 Prior to running this experiment notebook, you will need to run the
-[ucr_dataset_comparison_data.ipynb](ucr_dataset_comparison_data.ipynb) notebook
+[ucr_anomalies_data.ipynb](ucr_anomalies_data.ipynb) notebook
 to download and pre-process the data.
 
-## [Language dataset: langauge_dataset_anomalise.ipynb](langauge_dataset_anomalise.ipynb)
+## [Language dataset: language_dataset_anomalies.ipynb](language_dataset_anomalies.ipynb)
 
 Prior to running this experiment notebook, you will need to run the
-[langauge_dataset_anomalise_data.ipynb](langauge_dataset_anomalise_data.ipynb)
+[language_dataset_anomalies_data.ipynb](language_dataset_anomalies_data.ipynb)
 notebook to download and pre-process the data.
 
 There is some data provided for this in the `data` folder, but the notebook will
