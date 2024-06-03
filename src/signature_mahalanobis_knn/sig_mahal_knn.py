@@ -171,6 +171,8 @@ class SignatureMahalanobisKNN:
                 **kwargs,
             )
             self.knn = knn
+        else:
+            raise ValueError("Invalid knn library")
 
     def conformance(
         self,
