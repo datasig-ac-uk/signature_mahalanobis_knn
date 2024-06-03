@@ -34,8 +34,8 @@ notebook to download and pre-process the data.
 ## [Univariate time series: ucr_anomalies.ipynb](ucr_anomalies.ipynb)
 
 Prior to running this experiment notebook, you will need to run the
-[ucr_anomalies_data.ipynb](ucr_anomalies_data.ipynb) notebook
-to download and pre-process the data.
+[ucr_anomalies_data.ipynb](ucr_anomalies_data.ipynb) notebook to download and
+pre-process the data.
 
 ## [Language dataset: language_dataset_anomalies.ipynb](language_dataset_anomalies.ipynb)
 
