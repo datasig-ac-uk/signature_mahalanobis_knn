@@ -185,10 +185,8 @@ The core implementation of the SigMahaKNN method is in the
 
 ## Examples
 
-There are various examples in the `examples` and `paper-examples` folder:
+There are various examples in  `paper-examples` folder:
 
-- `examples` contains small examples using randomly generated data for
-  illustration purposes
 - `paper-examples` contains the examples used our paper
   [_Dimensionless Anomaly Detection on Multivariate Streams with Variance Norm and Path Signature_](https://arxiv.org/abs/2006.03487)
   where we compare the SigMahaKNN method to other baseline approaches (e.g.
