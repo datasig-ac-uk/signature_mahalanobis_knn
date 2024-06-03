@@ -36,7 +36,7 @@ def compute_moment_features(streams: np.array | list[np.array]) -> np.array:
 def compute_signatures(
     X: np.array,
     n_jobs: int = 1,
-    signature_kwargs=None,
+    signature_kwargs: dict | None = None,
 ) -> np.array:
     """
     Helper function to compute signatures in parallel.
