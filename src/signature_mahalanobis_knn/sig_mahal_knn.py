@@ -91,7 +91,7 @@ class SignatureMahalanobisKNN:
                 - backend: str, one of: `'esig'` (default), or `'iisignature'`.
                   The backend to use for signature computation.
             By default, the following arguments are used:
-                - augmentation_list: ()
+                - augmentation_list: ("addtime")
                 - window_name: "global"
                 - window_depth: None
                 - window_length: None
@@ -114,7 +114,7 @@ class SignatureMahalanobisKNN:
 
             # set default kwargs for signature transformer if not provided
             sig_defaults = {
-                "augmentation_list": (),
+                "augmentation_list": ("addtime",),
                 "window_name": "global",
                 "window_depth": None,
                 "window_length": None,
