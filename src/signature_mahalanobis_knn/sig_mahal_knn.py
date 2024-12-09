@@ -91,7 +91,7 @@ class SignatureMahalanobisKNN:
                 - backend: str, one of: `'esig'` (default), or `'iisignature'`.
                   The backend to use for signature computation.
             By default, the following arguments are used:
-                - augmentation_list: ("addtime",)
+                - augmentation_list: ("addtime")
                 - window_name: "global"
                 - window_depth: None
                 - window_length: None
@@ -179,6 +179,7 @@ class SignatureMahalanobisKNN:
         self,
         X_test: np.ndarray | None = None,
         signatures_test: np.ndarray | None = None,
+        kth: int = 1,
         n_neighbors: int = 20,
         return_indices: bool = False,
     ) -> np.ndarray:
@@ -202,6 +203,11 @@ class SignatureMahalanobisKNN:
         signatures_test : np.ndarray | None, optional
             Signatures of the data points, by default None.
             Two dimensional array of shape (n_samples, sig_dim).
+        kth: int | 1, optional
+            The distance to the kth nearest neighbor to be returned, 1 is nearest
+        n_neighbors: int | 20, optional
+            The neighborhood to look for the kth nearest neighbor.
+
         return_indices : bool, optional
             Whether to return the indices of the nearest neighbors,
             by default False.
@@ -227,7 +233,7 @@ class SignatureMahalanobisKNN:
             )
             signatures_test = np.array(pd.concat(sigs))
 
-        # pre-process the signatures
+        # pre-process the signatures to project to left eigenspace
         sig_dim = signatures_test.shape[1]
         modified_signatures = (
             (signatures_test - self.mahal_distance.mu)
@@ -249,10 +255,12 @@ class SignatureMahalanobisKNN:
                 modified_signatures, k=n_neighbors
             )
 
-        # post-process the candidate distances
+        # post-process the candidate distances (in the original space)
+        # create (n_test, n_neighbours) array with each column as [0, 1, ..., n_test-1]
         test_indices = np.tile(
             np.arange(train_indices.shape[0]), (train_indices.shape[1], 1)
         ).T
+
         # differences has shape (n_test x n_neighbors x sig_dim)
         differences = (
             self.signatures_train[train_indices] - signatures_test[test_indices]
@@ -267,6 +275,7 @@ class SignatureMahalanobisKNN:
             axis=-1,
         )
 
+        # quantifies the amount that x is outside the row-subspace
         rho = numerator / denominator
         # get rid of nans from zero denominator
         rho[denominator == 0] = 0
@@ -274,8 +283,11 @@ class SignatureMahalanobisKNN:
         candidate_distances[denominator < self.mahal_distance.zero_thres] = 0
         candidate_distances[rho > self.mahal_distance.subspace_thres] = np.inf
 
-        # compute the minimum of the candidate distances for each data point
+        # compute the kth closest point of the candidate distances for each data point
         if return_indices:
-            return np.min(candidate_distances, axis=-1), train_indices
+            return (
+                np.partition(candidate_distances, kth - 1, axis=-1)[:, kth - 1],
+                train_indices,
+            )
 
-        return np.min(candidate_distances, axis=-1)
+        return np.partition(candidate_distances, kth - 1, axis=-1)[:, kth - 1]
